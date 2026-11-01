@@ -2307,6 +2307,23 @@
             const days = getDays(), cps = classPeriods(), rows = kind === 'class' ? classes : teachers;
             if (!rows.length) return 'Nada cadastrado.';
             let h = `<div class="print-page">${pageHead('Quadro geral — ' + (kind === 'class' ? 'turmas' : 'professores'))}`;
+            if (kind === 'class') {
+                // turmas na parte de cima, aulas na lateral
+                days.forEach((dn, d) => {
+                    h += `<table class="ptable" style="font-size:8px;margin-bottom:8px;page-break-inside:avoid"><thead><tr><th style="width:70px">${esc(dn)}</th>${rows.map(c => `<th>${esc(shortName(c.name))}</th>`).join('')}</tr></thead><tbody>`;
+                    cps.forEach(p => {
+                        h += `<tr><td><b>${esc(p.label)}</b><br><span style="font-size:7px">${esc(p.time)}</span></td>`;
+                        rows.forEach(r => {
+                            if (isSecondSemester && r.isEstagio && p.shift === 'tarde') { h += '<td class="blk">Estágio</td>'; return; }
+                            const cell = (schedules[sem()][r.id] || {})[cellKey(d, p.id)], m = cell && matriz.find(x => x.id === cell.m), t = cell && teachers.find(x => x.id === cell.t);
+                            h += `<td>${cell && m ? `<b>${esc(m.subject)}</b><br>${esc(t ? shortTeacher(t) : '')}` : ''}</td>`;
+                        });
+                        h += '</tr>';
+                    });
+                    h += '</tbody></table>';
+                });
+                return h + '</div>';
+            }
             days.forEach((dn, d) => {
                 h += `<table class="ptable" style="font-size:8px;margin-bottom:8px;page-break-inside:avoid"><thead><tr><th style="width:80px">${esc(dn)}</th>${cps.map(p => `<th>${esc(p.label)}</th>`).join('')}</tr></thead><tbody>`;
                 rows.forEach(r => {
