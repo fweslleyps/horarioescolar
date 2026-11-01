@@ -92,6 +92,7 @@
             </div>
         </div>
         <div class="flex items-center gap-3 flex-wrap justify-end">
+            <button onclick="openReader()" class="text-xs font-bold bg-white text-school-primary hover:bg-gray-100 px-3 py-2 rounded-lg transition shadow flex items-center gap-1" title="Visão simples, em lista por dia, ideal para celular">📱 Modo leitura</button>
             <button onclick="copySemester()" class="text-xs font-bold bg-amber-500 text-amber-950 hover:bg-amber-400 px-3 py-2 rounded-lg transition shadow flex items-center gap-1" title="Copia a grade do 1º Semestre para o 2º, limpando a tarde do estágio.">📋 Copiar 1º para 2º Sem.</button>
             <div class="w-px h-6 bg-white bg-opacity-20 mx-1"></div>
             <button onclick="exportBackup()" class="text-xs font-semibold bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-2 rounded-lg transition" title="Baixar todos os dados em um arquivo JSON">💾 Exportar backup</button>
@@ -313,6 +314,14 @@
                     <button type="button" onclick="addFormFolga()" class="bg-school-primary text-white font-bold px-4 py-2 rounded text-sm hover:bg-opacity-90 shadow-sm">+ Adicionar Folga</button>
                 </div>
                 
+                <div class="flex items-end gap-2 flex-wrap text-xs">
+                    <div><span class="font-bold text-gray-700 block mb-1">Bloquear horário específico</span>
+                        <div class="flex gap-2 flex-wrap">
+                            <select id="teacherSlotDay" class="border border-gray-300 rounded px-2 py-2 text-sm bg-white"></select>
+                            <select id="teacherSlotPeriod" class="border border-gray-300 rounded px-2 py-2 text-sm bg-white"></select>
+                            <button type="button" onclick="addFormSlotFolga()" class="bg-school-primary text-white font-bold px-3 py-2 rounded text-sm hover:bg-opacity-90 shadow-sm">+ Bloquear</button>
+                        </div></div>
+                </div>
                 <div id="formFolgasList" class="flex flex-wrap gap-2"></div>
                 
                 <div class="flex gap-4 text-xs flex-wrap items-center pt-2">
@@ -352,11 +361,12 @@
                     <button onclick="redo()" id="redoBtn" class="bg-white border text-gray-700 font-bold px-3 py-2 rounded-lg shadow-sm hover:bg-gray-50 transition text-sm" title="Refazer (Ctrl+Y)">↷</button>
                     <button onclick="autoGenerate()" class="bg-yellow-400 text-school-primary font-bold px-4 py-2 rounded-lg shadow hover:bg-yellow-300 transition text-sm" title="Roda 5 simulações e mantém a melhor. Mantém as aulas já colocadas e aplica o horário fixo da FC.">✨ Gerador Automático</button>
                     <button onclick="autoGenerate({clearFirst:true})" class="bg-orange-100 text-orange-800 font-bold px-4 py-2 rounded-lg shadow hover:bg-orange-200 transition text-sm" title="Apaga tudo que não está travado (🔒) e gera de novo.">♻️ Refazer (só travadas)</button>
+                    <button onclick="openSubstitute()" class="bg-teal-100 text-teal-800 font-bold px-4 py-2 rounded-lg shadow hover:bg-teal-200 transition text-sm" title="Quando um professor sai ou falta: sugere quem pode cobrir cada aula">🔄 Substituir professor</button>
                     <button onclick="clearSchedule()" class="bg-red-100 text-red-700 font-bold px-4 py-2 rounded-lg shadow hover:bg-red-200 transition text-sm" title="Remove aulas soltas. Aulas com o CADEADO não serão apagadas.">🗑️ Limpar Soltas</button>
                 </div>
             </div>
             
-            <p class="text-xs text-gray-500 mb-3">Arraste para mover as aulas. Se soltar por cima de outra aula, será substituída. Use o <b>CADEADO 🔒</b> para fixar a aula. Duplo clique remove.</p>
+            <p class="text-xs text-gray-500 mb-3">Arraste para mover as aulas. Ao mover por cima de outra aula da turma, as duas <b>trocam de lugar</b> (se as regras permitirem); ao soltar um professor da lateral por cima, a aula é substituída. Use o <b>CADEADO 🔒</b> para fixar a aula. Duplo clique remove.</p>
             
             <div class="flex flex-col lg:flex-row gap-4 items-start relative">
                 <!-- Sidebar com Sticky -->
@@ -383,6 +393,7 @@
             <div class="flex justify-between items-center mb-1 flex-wrap gap-2">
                 <h2 class="text-xl font-bold text-school-primary">Auditoria e Sugestões</h2>
                 <div class="flex gap-2 flex-wrap">
+                    <button onclick="auditLocalAll()" class="bg-yellow-400 text-school-primary font-bold px-4 py-2 rounded text-sm hover:bg-yellow-300 shadow-sm" title="Para as pendências sem horário limpo, tenta mover outras aulas para abrir espaço">🔀 Encaixar pendências com trocas</button>
                     <button onclick="auditAllocAll()" class="bg-school-primary text-white font-bold px-4 py-2 rounded text-sm hover:bg-opacity-90 shadow-sm">➕ Alocar todas as pendências</button>
                     <button onclick="auditFixAll()" class="bg-school-accent text-white font-bold px-4 py-2 rounded text-sm hover:bg-opacity-90 shadow-sm">🛠️ Corrigir conflitos movíveis</button>
                 </div>
@@ -399,6 +410,8 @@
                     <option value="all">🖨️ Todas as turmas</option>
                     <option value="class">🏫 Uma turma</option>
                     <option value="allteachers">👥 Todos os professores</option>
+                    <option value="overview">🗂️ Quadro geral — turmas (compacto)</option>
+                    <option value="overviewT">🗂️ Quadro geral — professores (compacto)</option>
                     <option value="teacher">👨‍🏫 Um professor</option>
                 </select>
                 <select id="printItemSelect" onchange="generatePrintView()" class="hidden border border-gray-300 rounded px-3 py-2 text-sm bg-white"></select>
@@ -414,6 +427,35 @@
     <div id="printContainer" class="print-only"></div>
     <div id="toast" class="fixed bottom-4 right-4 text-white text-sm px-4 py-2 rounded shadow-lg hidden no-print z-50 transition-all"></div>
     
+    <!-- Modo leitura (celular) -->
+    <div id="readerModal" class="hidden fixed inset-0 bg-white overflow-y-auto no-print" style="z-index:60">
+        <div class="sticky top-0 bg-school-primary text-white p-3 flex gap-2 items-center flex-wrap shadow">
+            <b class="mr-1">Horários</b>
+            <select id="readerKind" onchange="renderReader(true)" class="text-gray-800 rounded px-2 py-1 text-sm"><option value="class">Turma</option><option value="teacher">Professor</option></select>
+            <select id="readerItem" onchange="renderReader()" class="text-gray-800 rounded px-2 py-1 text-sm max-w-[55%]"></select>
+            <button onclick="closeReader()" class="ml-auto bg-white bg-opacity-20 hover:bg-opacity-30 rounded px-3 py-1 text-sm font-bold">✕ Fechar</button>
+        </div>
+        <div id="readerBody" class="p-3 max-w-xl mx-auto"></div>
+    </div>
+
+    <!-- Substituição de professor -->
+    <div id="subModal" class="hidden fixed inset-0 flex items-center justify-center p-4" style="z-index:55">
+        <div class="absolute inset-0 bg-black bg-opacity-40" onclick="closeSubstitute()"></div>
+        <div class="relative bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
+                <h3 class="font-bold text-lg text-school-primary">Substituir professor</h3>
+                <button onclick="closeSubstitute()" class="text-gray-500 hover:text-red-600 font-bold text-xl leading-none">&times;</button>
+            </div>
+            <div class="p-4 border-b flex gap-3 flex-wrap items-end">
+                <label class="text-xs font-bold text-gray-700">Professor que sai / falta<select id="subTeacher" onchange="renderSubstitute()" class="mt-1 block border border-gray-300 rounded px-2 py-2 text-sm bg-white"></select></label>
+                <label class="text-xs font-bold text-gray-700">Quando<select id="subDay" onchange="renderSubstitute()" class="mt-1 block border border-gray-300 rounded px-2 py-2 text-sm bg-white"></select></label>
+                <button onclick="subApplyAll()" class="bg-school-accent text-white font-bold px-4 py-2 rounded text-sm hover:bg-opacity-90">Aplicar melhor sugestão em todas</button>
+            </div>
+            <p class="px-4 pt-3 text-[11px] text-gray-500">A troca altera a grade do semestre aberto (não é só por um dia) e pode ser desfeita com Ctrl+Z. Só aparecem professores que lecionam aquela disciplina para a turma.</p>
+            <div id="subBody" class="p-4 overflow-y-auto flex-1 text-sm"></div>
+        </div>
+    </div>
+
     <!-- Modal Relatório de Professores -->
     <div id="teacherReportModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
         <div id="modalOverlay" class="absolute inset-0 bg-black bg-opacity-40" onclick="closeTeacherReport()"></div>
@@ -727,6 +769,7 @@
         function firstLastIds(shift) { const list = classPeriods().filter(p => shift === 'all' || p.shift === shift); return { first: list[0] && list[0].id, last: list[list.length - 1] && list[list.length - 1].id }; }
         function isFolga(t, d, period) {
             return (t.folgas || []).some(f => {
+                if (f.p) return Number(f.day) === d && f.p === period.id;
                 if (f.shift !== 'all' && period.shift !== f.shift) return false;
                 if (f.day === 'all') return true; 
                 if (f.day === 'firsts') return firstLastIds(f.shift).first === period.id;
@@ -854,7 +897,7 @@
 
         function renderAll() {
             renderClassTable(); renderPeriodTable(); renderMatrizClassCheckboxes(); renderMatrizTable(); renderLoadSummary();
-            renderTeacherMatrizChecks(); renderFormFolgas(); renderTeacherTable(); renderTabs(); updatePrintMode(); refreshSchedule();
+            renderTeacherMatrizChecks(); renderFormFolgas(); renderSlotBlockOptions(); renderTeacherTable(); renderTabs(); updatePrintMode(); refreshSchedule();
         }
         function refreshSchedule() {
             renderGrid(); renderSidebarTeachers(); renderStatus(); renderLoadSummary(); renderTeacherTable(); updateUndoButtons(); saveData();
@@ -1046,6 +1089,7 @@
 
         // ================= PROFESSORES =================
         function folgaText(f) {
+            if (f.p) { const per = getPeriod(f.p); return `${DAY_NAMES[Number(f.day)] || '?'}, ${per ? per.label : '?'} (horário bloqueado)`; }
             const sh = f.shift === 'all' ? '' : ` (${SHIFT_LABEL[f.shift] || f.shift})`;
             if (f.day === 'all') return 'Todas as ' + ({ manha: 'manhãs', tarde: 'tardes', noite: 'noites' }[f.shift] || 'aulas');
             if (f.day === 'firsts') return 'Todas as 1ªs aulas' + sh;
@@ -1089,7 +1133,7 @@
         function addFormFolga() {
             const dayVal = document.getElementById('teacherFolgaDay').value; if (dayVal === '-1') return alert('Escolha o dia.');
             const auto = dayVal === 'firsts' || dayVal === 'lasts' || dayVal === 'tardes', shift = dayVal === 'tardes' ? 'tarde' : (auto ? 'all' : document.getElementById('teacherFolgaShift').value), day = dayVal === 'tardes' ? 'all' : (auto ? dayVal : Number(dayVal));
-            if (!formFolgas.some(f => f.day === day && f.shift === shift)) formFolgas.push({ day, shift });
+            if (!formFolgas.some(f => !f.p && f.day === day && f.shift === shift)) formFolgas.push({ day, shift });
             document.getElementById('teacherFolgaDay').value = '-1'; onFolgaDayChange(); renderFormFolgas();
         }
         function removeFormFolga(i) { formFolgas.splice(i, 1); renderFormFolgas(); }
@@ -1480,6 +1524,7 @@
             const { t, m, d: originD, p: originP, pre, locked } = dragged; dragged = null;
             const preState = pre || JSON.stringify(schedules);
             const replaced = [];
+            if (originD !== null && originP !== null && rollback && trySwap(t, m, originD, originP, d, periodId, rollback, preState)) return;
             
             const targetKey = cellKey(d, periodId);
             const overwrittenCells = {};
@@ -1675,12 +1720,14 @@
 
             snapshot(original);
             schedules = JSON.parse(bestSimSchedule);
+            const porTroca = localSearchFill();
             refreshSchedule();
 
-            let msg = `✨ ${bestStats.placedTotal} aula(s) alocada(s) no melhor cenário.`;
+            let msg = `✨ ${bestStats.placedTotal + porTroca} aula(s) alocada(s) no melhor cenário.` + (porTroca ? `\n🔀 ${porTroca} delas só couberam movendo outras aulas (busca local).` : '');
             if (fixedIssues.length) msg += '\n\nHorário fixo da FC não aplicado em:\n• ' + fixedIssues.join('\n• ');
-            if (bestStats.pend.length) msg += '\n\nFalta alocar:\n' + bestStats.pend.map(d => `• ${d.c.name} — ${d.m.subject} ${d.t ? '(' + d.t.name + ')' : ''}: faltam ${d.rem}`).join('\n');
-            toast(msg, (bestStats.pend.length || fixedIssues.length) ? 'warn' : 'ok');
+            const faltam = pendingList().filter(x => x.hasT);
+            if (faltam.length) msg += '\n\nFalta alocar:\n' + faltam.map(x => `• ${x.c.name} — ${x.m.subject}: faltam ${x.diff}`).join('\n');
+            toast(msg, (faltam.length || fixedIssues.length) ? 'warn' : 'ok');
         }
 
         // ================= RELATÓRIOS (contagem única) =================
@@ -1836,7 +1883,7 @@
                 const mx = Number(t.maxPerDay); o.maxPerDay = Number.isInteger(mx) && mx >= 1 && mx <= 15 ? mx : 8;
                 o.maxFlex = !!t.maxFlex; o.avoidConsecutive = !!t.avoidConsecutive; o.isDiretor = !!t.isDiretor;
                 if (typeof t.color === 'string' && bgColors.includes(t.color)) o.color = t.color;
-                o.folgas = (Array.isArray(t.folgas) ? t.folgas : []).filter(f => { const ok = isObj(f) && FOLGA_SHIFTS.includes(f.shift) && (['firsts', 'lasts', 'all'].includes(f.day) || (Number.isInteger(f.day) && f.day >= 0 && f.day <= 5)); if (!ok) dropped++; return ok; }).map(f => ({ day: f.day, shift: f.shift }));
+                o.folgas = (Array.isArray(t.folgas) ? t.folgas : []).filter(f => { const okP = !f || f.p === undefined || (typeof f.p === 'string' && classPer.has(f.p) && Number.isInteger(f.day) && f.day >= 0 && f.day <= 5); const ok = isObj(f) && okP && FOLGA_SHIFTS.includes(f.shift) && (['firsts', 'lasts', 'all'].includes(f.day) || (Number.isInteger(f.day) && f.day >= 0 && f.day <= 5)); if (!ok) dropped++; return ok; }).map(f => f.p ? { day: f.day, shift: 'all', p: f.p } : { day: f.day, shift: f.shift });
                 return o;
             });
             const tIds = new Set(tch.map(t => t.id));
@@ -1976,7 +2023,7 @@
                 items.push({
                     sev: 2, title: `${x.c.name} — ${x.m.subject}: faltam ${x.diff} aula(s)`,
                     detail: can ? '💡 Há horário livre sem conflito.' : '⚠ Nenhum horário limpo: mova/remova outra aula, ajuste folgas ou use o Gerador.',
-                    actions: can ? [{ label: 'Alocar 1 aula', run: () => allocOne(x.c.id, x.m.id) ? { ok: true, msg: 'Aula alocada.' } : { ok: false, msg: 'Sem horário limpo.' } }] : []
+                    actions: can ? [{ label: 'Alocar 1 aula', run: () => allocOne(x.c.id, x.m.id) ? { ok: true, msg: 'Aula alocada.' } : { ok: false, msg: 'Sem horário limpo.' } }] : (x.m.fc ? [] : [{ label: 'Tentar com trocas', run: () => (ejectAlloc(x.c.id, x.m.id, false) || ejectAlloc(x.c.id, x.m.id, true)) ? { ok: true, msg: 'Aula encaixada movendo outra(s) aula(s).' } : { ok: false, msg: 'Nem com trocas foi possível: restrições do professor (folgas/limite) impedem.' } }])
                 });
             });
             // FC sem série
@@ -2067,6 +2114,220 @@
             updateAuditBadge();
         }
 
+        // ================= TROCA DE AULAS AO ARRASTAR =================
+        // Origem já foi retirada no dragstart (rollback guarda). Destino ocupado por outra aula da turma => as duas trocam de lugar.
+        function trySwap(t, m, originD, originP, d, periodId, rollback, preState) {
+            const key = cellKey(d, periodId), okey = cellKey(originD, originP), cells = sched(activeClass);
+            const tc = cells[key]; if (!tc || tc.locked || (tc.t === t && tc.m === m)) return false;
+            const mm = matriz.find(x => x.id === m), tm = matriz.find(x => x.id === tc.m);
+            if (!mm || !tm || mm.fc || tm.fc) return false;
+            const revert = () => { delete cells[key]; cells[key] = tc; restoreOriginCells(rollback, originD, originP); refreshSchedule(); };
+            delete cells[key];
+            const r1 = evaluate(t, m, activeClass, d, periodId, { skipSync: true });
+            cells[key] = { t, m, locked: false };
+            const r2 = evaluate(tc.t, tc.m, activeClass, originD, originP, { skipSync: true });
+            const hard = [...r1.hard.map(x => `${mm.subject} no novo lugar: ${x}`), ...r2.hard.map(x => `${tm.subject} no lugar antigo: ${x}`)];
+            if (hard.length) { alert('Não é possível trocar:\n• ' + hard.join('\n• ')); revert(); return true; }
+            const soft = [...r1.soft.map(x => `${mm.subject}: ${x}`), ...r2.soft.map(x => `${tm.subject}: ${x}`)];
+            if (soft.length && !confirm(`Trocar ${mm.subject} com ${tm.subject}?\nAtenção:\n• ${soft.join('\n• ')}\n\nTrocar mesmo assim?`)) { revert(); return true; }
+            cells[okey] = { t: tc.t, m: tc.m, locked: false };
+            snapshot(preState); refreshSchedule();
+            toast(`Trocadas: ${mm.subject} ⇄ ${tm.subject}.`, 'ok');
+            return true;
+        }
+
+        // ================= BUSCA LOCAL (ENCAIXAR PENDÊNCIAS COM TROCAS) =================
+        // Para a aula pendente, tenta cada horário: as aulas que atrapalham (na turma ou do mesmo professor em outra turma)
+        // saem e são realocadas em horários limpos. Se alguma não couber, desfaz tudo.
+        function ejectAlloc(classId, mId, allowSoft) {
+            const m = matriz.find(x => x.id === mId); if (!m || m.fc) return false;
+            if (countClassMatriz(classId, mId) >= getEffectiveAulas(mId, classId)) return false;
+            const profs = teachers.filter(t => {
+                if (!teacherTeaches(t, mId, classId)) return false;
+                let n = 0; Object.values(sched(classId)).forEach(x => { if (x.t === t.id && x.m === mId) n++; });
+                return n < teacherLimit(t, mId, classId);
+            });
+            for (const t of profs) {
+                for (const s of candidateSlots(classId)) {
+                    const key = cellKey(s.d, s.p), blockers = []; let skip = false;
+                    const own = sched(classId)[key];
+                    if (own) { const om = matriz.find(x => x.id === own.m); if (own.locked || !om || om.fc) continue; blockers.push({ cid: classId, key }); }
+                    classes.forEach(o => {
+                        if (o.id === classId) return; const x = sched(o.id)[key];
+                        if (x && x.t === t.id) { const xm = matriz.find(i => i.id === x.m); if (x.locked || !xm || xm.fc) skip = true; else blockers.push({ cid: o.id, key }); }
+                    });
+                    if (skip || blockers.length > 2) continue;
+                    if (!blockers.length && !allowSoft) continue;
+                    const snap = JSON.stringify(schedules);
+                    const saved = blockers.map(b => ({ ...b, cell: sched(b.cid)[b.key] }));
+                    saved.forEach(b => { delete sched(b.cid)[b.key]; });
+                    const r = evaluate(t.id, mId, classId, s.d, s.p, { skipSync: true });
+                    if (r.hard.length || (r.soft.length && !allowSoft)) { schedules = JSON.parse(snap); continue; }
+                    sched(classId)[key] = { t: t.id, m: mId, locked: false };
+                    let ok = true;
+                    for (const b of saved) {
+                        const f = findCleanSlot(b.cid, b.cell.t, b.cell.m, b.key);
+                        if (!f) { ok = false; break; }
+                        applyPlan(f.plan, f.key, b.cell.m);
+                    }
+                    if (ok) return true;
+                    schedules = JSON.parse(snap);
+                }
+            }
+            return false;
+        }
+        function localSearchFill() {
+            let placed = 0;
+            for (const allowSoft of [false, true]) {
+                let progress = true, guard = 0;
+                while (progress && guard++ < 50) {
+                    progress = false;
+                    for (const x of pendingList().filter(y => y.hasT && !y.m.fc)) {
+                        if (allocOne(x.c.id, x.m.id) || ejectAlloc(x.c.id, x.m.id, allowSoft)) { placed++; progress = true; }
+                    }
+                }
+            }
+            return placed;
+        }
+        function auditLocalAll() {
+            const pend = pendingList().filter(x => x.hasT && !x.m.fc); if (!pend.length) return toast('Nenhuma pendência para encaixar.', 'ok');
+            const pre = JSON.stringify(schedules), n = localSearchFill();
+            if (n) snapshot(pre);
+            refreshSchedule();
+            const left = pendingList().filter(x => x.hasT).reduce((sum, x) => sum + x.diff, 0);
+            toast(`${n} aula(s) encaixada(s) (algumas movendo outras aulas).` + (left ? `\nAinda faltam ${left}: folgas/limites dos professores impedem.` : ''), left ? 'warn' : 'ok');
+        }
+
+        // ================= FOLGA POR HORÁRIO ESPECÍFICO =================
+        function renderSlotBlockOptions() {
+            const dsel = document.getElementById('teacherSlotDay'), psel = document.getElementById('teacherSlotPeriod'); if (!dsel || !psel) return;
+            dsel.innerHTML = getDays().map((dn, i) => `<option value="${i}">${esc(dn)}</option>`).join('');
+            psel.innerHTML = classPeriods().map(p => `<option value="${esc(p.id)}">${esc(p.label)} (${esc(p.time)})</option>`).join('');
+        }
+        function addFormSlotFolga() {
+            const day = parseInt(document.getElementById('teacherSlotDay').value), p = document.getElementById('teacherSlotPeriod').value;
+            if (isNaN(day) || !p) return alert('Escolha o dia e a aula.');
+            if (!formFolgas.some(f => f.p === p && Number(f.day) === day)) formFolgas.push({ day, shift: 'all', p });
+            renderFormFolgas();
+        }
+
+        // ================= SUBSTITUIÇÃO DE PROFESSOR =================
+        function openSubstitute() {
+            if (!teachers.length) return alert('Cadastre professores primeiro.');
+            const tsel = document.getElementById('subTeacher'), keep = tsel.value;
+            tsel.innerHTML = teachers.map(t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');
+            if (keep && teachers.some(t => t.id === keep)) tsel.value = keep;
+            document.getElementById('subDay').innerHTML = '<option value="all">Todos os dias</option>' + getDays().map((dn, i) => `<option value="${i}">${esc(dn)}</option>`).join('');
+            document.getElementById('subModal').classList.remove('hidden'); renderSubstitute();
+        }
+        function closeSubstitute() { document.getElementById('subModal').classList.add('hidden'); }
+        function subRows() {
+            const tid = document.getElementById('subTeacher').value, dayV = document.getElementById('subDay').value, rows = [];
+            classes.forEach(c => Object.entries(sched(c.id)).forEach(([k, cell]) => {
+                if (cell.t !== tid) return; const d = keyDay(k); if (dayV !== 'all' && Number(dayV) !== d) return;
+                const m = matriz.find(x => x.id === cell.m), pid = keyPeriod(k); if (!m) return;
+                const orig = cell; delete sched(c.id)[k];
+                const cands = teachers.filter(o => o.id !== tid && teacherTeaches(o, m.id, c.id)).map(o => {
+                    const r = evaluate(o.id, m.id, c.id, d, pid, { skipSync: true });
+                    return { t: o, hard: r.hard, soft: r.soft };
+                });
+                sched(c.id)[k] = orig;
+                cands.sort((a, b) => (a.hard.length - b.hard.length) || (a.soft.length - b.soft.length));
+                rows.push({ c, k, d, pid, m, cands });
+            }));
+            rows.sort((a, b) => a.d - b.d || pidIdx(a.pid) - pidIdx(b.pid));
+            return rows;
+        }
+        let subCache = [];
+        function renderSubstitute() {
+            subCache = subRows();
+            const body = document.getElementById('subBody');
+            if (!subCache.length) { body.innerHTML = '<div class="text-gray-500">Este professor não tem aulas no período escolhido.</div>'; return; }
+            body.innerHTML = `<table class="w-full text-left border-collapse text-sm"><thead><tr class="bg-gray-100 text-xs text-gray-600 uppercase border-b"><th class="p-2">Dia / Aula</th><th class="p-2">Turma · Disciplina</th><th class="p-2">Quem pode cobrir</th></tr></thead><tbody>${subCache.map((r, i) => {
+                const p = getPeriod(r.pid);
+                const opts = r.cands.length ? r.cands.map((cd, j) => {
+                    const blocked = cd.hard.length > 0;
+                    const tip = [...cd.hard, ...cd.soft].join(' • ');
+                    return `<button ${blocked ? 'disabled' : `onclick="subApply(${i}, ${j})"`} title="${esc(tip || 'Sem conflitos')}" class="text-[11px] font-bold border rounded px-2 py-1 mr-1 mb-1 ${blocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed line-through' : (cd.soft.length ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100' : 'bg-green-50 border-green-300 text-green-800 hover:bg-green-100')}">${esc(shortTeacher(cd.t))}${cd.soft.length ? ' ⚠' : ''}${blocked ? ' ✕' : ''}</button>`;
+                }).join('') : '<span class="text-xs text-red-600">Nenhum outro professor leciona esta disciplina para a turma.</span>';
+                return `<tr class="border-b align-top"><td class="p-2 whitespace-nowrap">${esc(DAY_NAMES[r.d])}<br><span class="text-xs text-gray-500">${esc(p ? p.label : '')}</span></td><td class="p-2">${esc(r.c.name)}<br><span class="text-xs text-gray-600">${esc(r.m.subject)}</span></td><td class="p-2">${opts}</td></tr>`;
+            }).join('')}</tbody></table><div class="text-[11px] text-gray-500 mt-2">Verde = sem conflitos · Amarelo ⚠ = com aviso (passe o mouse) · Cinza ✕ = impedido por regra grave.</div>`;
+        }
+        function subApply(i, j) {
+            const r = subCache[i]; if (!r) return; const cd = r.cands[j]; const cell = sched(r.c.id)[r.k];
+            if (!cell || !cd || cd.hard.length) return;
+            snapshot(); cell.t = cd.t.id; refreshSchedule(); renderSubstitute();
+            toast(`${r.m.subject} (${r.c.name}) agora com ${cd.t.name}.`, 'ok');
+        }
+        function subApplyAll() {
+            const rows = subRows(); if (!rows.length) return;
+            const pre = JSON.stringify(schedules); let done = 0, left = 0;
+            rows.forEach(r => {
+                const best = r.cands.find(cd => !cd.hard.length); const cell = sched(r.c.id)[r.k];
+                if (best && cell) { cell.t = best.t.id; done++; } else left++;
+            });
+            if (done) snapshot(pre);
+            refreshSchedule(); renderSubstitute();
+            toast(`${done} aula(s) passada(s) para substitutos.` + (left ? `\n${left} sem substituto possível.` : ''), left ? 'warn' : 'ok');
+        }
+
+        // ================= MODO LEITURA (CELULAR) =================
+        function openReader() { document.getElementById('readerModal').classList.remove('hidden'); renderReader(true); }
+        function closeReader() { document.getElementById('readerModal').classList.add('hidden'); }
+        function renderReader(reset) {
+            const kind = document.getElementById('readerKind').value, isel = document.getElementById('readerItem');
+            const list = kind === 'class' ? classes : teachers;
+            if (reset || !isel.innerHTML) {
+                isel.innerHTML = list.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+                const pre = kind === 'class' ? activeClass : activeTeacherView; if (pre && list.some(x => x.id === pre)) isel.value = pre;
+            }
+            const id = isel.value, body = document.getElementById('readerBody');
+            const ent = list.find(x => x.id === id); if (!ent) { body.innerHTML = '<div class="text-gray-500">Nada cadastrado.</div>'; return; }
+            let html = `<div class="text-xs text-gray-500 mb-2">${esc(ent.name)} · ${sem()}º semestre</div>`;
+            getDays().forEach((dn, d) => {
+                const lines = [];
+                classPeriods().forEach(p => {
+                    if (kind === 'class') {
+                        if (isSecondSemester && ent.isEstagio && p.shift === 'tarde') return;
+                        const cell = sched(ent.id)[cellKey(d, p.id)]; if (!cell) return;
+                        const m = matriz.find(x => x.id === cell.m), t = teachers.find(x => x.id === cell.t);
+                        lines.push({ p, a: m ? m.subject : '', b: t ? t.name : '' });
+                    } else {
+                        const hits = []; classes.forEach(c => { const cell = sched(c.id)[cellKey(d, p.id)]; if (cell && cell.t === ent.id) hits.push({ c, m: matriz.find(x => x.id === cell.m) }); });
+                        if (hits.length) lines.push({ p, a: hits[0].m ? hits[0].m.subject : '', b: hits.map(h => h.c.name).join(' + ') });
+                    }
+                });
+                html += `<div class="border rounded-lg mb-3 overflow-hidden"><div class="bg-gray-100 px-3 py-1.5 font-bold text-school-primary text-sm">${esc(dn)}</div>${lines.length ? lines.map(l => `<div class="px-3 py-2 border-t flex gap-3"><div class="w-24 shrink-0"><div class="text-xs font-bold text-school-primary">${esc(l.p.label)}</div><div class="text-[10px] text-gray-500">${esc(l.p.time)}</div></div><div class="min-w-0"><div class="font-semibold text-sm">${esc(l.a)}</div><div class="text-xs text-gray-600">${esc(l.b)}</div></div></div>`).join('') : '<div class="px-3 py-2 text-xs text-gray-400 border-t">Sem aulas</div>'}</div>`;
+            });
+            body.innerHTML = html;
+        }
+
+        // ================= QUADRO GERAL (IMPRESSÃO COMPACTA) =================
+        function overviewHtml(kind) {
+            const days = getDays(), cps = classPeriods(), rows = kind === 'class' ? classes : teachers;
+            if (!rows.length) return 'Nada cadastrado.';
+            let h = `<div class="print-page">${pageHead('Quadro geral — ' + (kind === 'class' ? 'turmas' : 'professores'))}`;
+            days.forEach((dn, d) => {
+                h += `<table class="ptable" style="font-size:8px;margin-bottom:8px;page-break-inside:avoid"><thead><tr><th style="width:80px">${esc(dn)}</th>${cps.map(p => `<th>${esc(p.label)}</th>`).join('')}</tr></thead><tbody>`;
+                rows.forEach(r => {
+                    h += `<tr><td><b>${esc(kind === 'class' ? shortName(r.name) : shortTeacher(r))}</b></td>`;
+                    cps.forEach(p => {
+                        if (kind === 'class') {
+                            if (isSecondSemester && r.isEstagio && p.shift === 'tarde') { h += '<td class="blk">Estágio</td>'; return; }
+                            const cell = (schedules[sem()][r.id] || {})[cellKey(d, p.id)], m = cell && matriz.find(x => x.id === cell.m), t = cell && teachers.find(x => x.id === cell.t);
+                            h += `<td>${cell && m ? `<b>${esc(m.subject)}</b><br>${esc(t ? shortTeacher(t) : '')}` : ''}</td>`;
+                        } else {
+                            const hits = []; classes.forEach(c => { const cell = (schedules[sem()][c.id] || {})[cellKey(d, p.id)]; if (cell && cell.t === r.id) hits.push(`<b>${esc((matriz.find(x => x.id === cell.m) || {}).subject || '')}</b><br>${esc(shortName(c.name))}`); });
+                            h += hits.length ? `<td>${hits.join('<hr style="margin:1px 0">')}</td>` : (isFolga(r, d, p) ? '<td class="blk">Folga</td>' : '<td></td>');
+                        }
+                    });
+                    h += '</tr>';
+                });
+                h += '</tbody></table>';
+            });
+            return h + '</div>';
+        }
+
         // ================= IMPRESSÃO E EXPORTAÇÃO =================
         function updatePrintMode() {
             const mode = document.getElementById('printModeSelect').value, sel = document.getElementById('printItemSelect');
@@ -2121,6 +2382,8 @@
             if (mode === 'all') return classes.map(classTableHtml).join('') || 'Nenhuma turma cadastrada.';
             if (mode === 'class') { const c = classes.find(x => x.id === id); return c ? classTableHtml(c) : 'Selecione uma turma.'; }
             if (mode === 'allteachers') return teachers.map(teacherTableHtml).join('') || 'Nenhum professor cadastrado.';
+            if (mode === 'overview') return overviewHtml('class');
+            if (mode === 'overviewT') return overviewHtml('teacher');
             const t = teachers.find(x => x.id === id); return t ? teacherTableHtml(t) : 'Selecione um professor.';
         }
         function generatePrintView() { document.getElementById('printPreviewContainer').innerHTML = buildPrintHtml(); }
