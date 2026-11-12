@@ -2376,7 +2376,7 @@
             document.getElementById('subDateWrap').classList.toggle('hidden', !cover);
             document.getElementById('subCoverAllBtn').classList.toggle('hidden', !cover);
             document.getElementById('subNote').textContent = cover
-                ? 'Só vale para a data escolhida: a grade NÃO é alterada. Mostra quem está livre em cada horário (sem aula e sem folga) e guarda o registro da substituição para consulta e impressão.'
+                ? 'Só vale para a data escolhida: a grade NÃO é alterada. Mostra quem está livre em cada horário (professores da própria turma, sem aula e sem folga) e guarda o registro da substituição para consulta e impressão.'
                 : 'A troca altera a grade do semestre aberto (não é só por um dia) e pode ser desfeita com Ctrl+Z. Só aparecem professores que lecionam aquela disciplina para a turma.';
             renderSubstitute();
         }
@@ -2397,7 +2397,8 @@
                 if (o.planDay === d) warns.push('é o dia de planejamento dele(a)');
                 const load = teacherDayLoad(o.id, d) + subsList.filter(x => x.sem === sem() && x.date === date && x.coverId === o.id).length;
                 if (load >= (o.maxPerDay || 8)) warns.push(`já teria ${load} aula(s) no dia (limite ${o.maxPerDay || 8})`);
-                const rel = teacherTeaches(o, m.id, c.id) ? 0 : (o.matrizIds.some(mid => (matriz.find(x => x.id === mid) || {}).subject === m.subject) ? 1 : 2);
+                const rel = teacherTeaches(o, m.id, c.id) ? 0 : 1;
+                if (rel === 1 && !o.matrizIds.some(mid => teacherTeaches(o, mid, c.id))) return null; // só quem leciona nesta turma
                 return { t: o, rel, warns, load };
             }).filter(Boolean).sort((a, b) => a.rel - b.rel || a.warns.length - b.warns.length || a.load - b.load);
         }
@@ -2421,8 +2422,8 @@
             const body = document.getElementById('subBody'), R = coverRows();
             if (R.err) { coverCache = { rows: [], date: '' }; body.innerHTML = `<div class="text-gray-500">${esc(R.err)}</div>` + coverRegistered(''); return; }
             coverCache = R;
-            const REL = ['bg-green-50 border-green-300 text-green-800 hover:bg-green-100', 'bg-blue-50 border-blue-300 text-blue-800 hover:bg-blue-100', 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'];
-            const RELT = ['leciona para esta turma', 'mesma disciplina', 'outra área'];
+            const REL = ['bg-green-50 border-green-300 text-green-800 hover:bg-green-100', 'bg-blue-50 border-blue-300 text-blue-800 hover:bg-blue-100'];
+            const RELT = ['leciona esta disciplina na turma', 'leciona outra disciplina na turma'];
             let html = `<div class="text-xs text-gray-600 mb-2">${esc(fmtDate(R.date))} · ${esc(WEEKDAYS[R.dt.getDay()])} — ${R.rows.length} aula(s) do professor neste dia (${sem()}º semestre).</div>`;
             if (!R.rows.length) html += '<div class="text-gray-500 mb-3">Este professor não tem aulas neste dia da semana.</div>';
             else html += `<table class="w-full text-left border-collapse text-sm"><thead><tr class="bg-gray-100 text-xs text-gray-600 uppercase border-b"><th class="p-2">Aula</th><th class="p-2">Turma · Disciplina</th><th class="p-2">Quem está livre neste horário</th></tr></thead><tbody>${R.rows.map((r, i) => {
@@ -2432,7 +2433,7 @@
                 else if (!r.cands.length) cell = '<span class="text-xs text-red-600">Ninguém livre neste horário.</span>';
                 else cell = r.cands.map((cd, j) => `<button onclick="coverApply(${i}, ${j})" title="${esc(RELT[cd.rel] + (cd.warns.length ? ' • ⚠ ' + cd.warns.join(' • ') : '') + ` • ${cd.load} aula(s) no dia`)}" class="text-[11px] font-bold border rounded px-2 py-1 mr-1 mb-1 ${REL[cd.rel]}">${esc(shortTeacher(cd.t))}${cd.warns.length ? ' ⚠' : ''}</button>`).join('');
                 return `<tr class="border-b align-top"><td class="p-2 whitespace-nowrap">${esc(p ? p.label : '')}<br><span class="text-xs text-gray-500">${esc(p ? p.time : '')}</span></td><td class="p-2">${esc(r.c.name)}<br><span class="text-xs text-gray-600">${esc(r.m.subject)}</span></td><td class="p-2">${cell}</td></tr>`;
-            }).join('')}</tbody></table><div class="text-[11px] text-gray-500 mt-2">Verde = leciona para a turma · Azul = mesma disciplina · Cinza = outra área · ⚠ = aviso (passe o mouse). Só aparecem professores sem aula e sem folga naquele horário.</div>`;
+            }).join('')}</tbody></table><div class="text-[11px] text-gray-500 mt-2">Verde = leciona esta disciplina na turma · Azul = leciona outra disciplina na turma · ⚠ = aviso (passe o mouse). Só aparecem professores desta turma, sem aula e sem folga naquele horário.</div>`;
             body.innerHTML = html + coverRegistered(R.date);
         }
         function coverRegistered(date) {
