@@ -361,7 +361,7 @@
                     <button onclick="redo()" id="redoBtn" class="bg-white border text-gray-700 font-bold px-3 py-2 rounded-lg shadow-sm hover:bg-gray-50 transition text-sm" title="Refazer (Ctrl+Y)">↷</button>
                     <button onclick="autoGenerate()" class="bg-yellow-400 text-school-primary font-bold px-4 py-2 rounded-lg shadow hover:bg-yellow-300 transition text-sm" title="Roda 5 simulações e mantém a melhor. Mantém as aulas já colocadas e aplica o horário fixo da FC.">✨ Gerador Automático</button>
                     <button onclick="autoGenerate({clearFirst:true})" class="bg-orange-100 text-orange-800 font-bold px-4 py-2 rounded-lg shadow hover:bg-orange-200 transition text-sm" title="Apaga tudo que não está travado (🔒) e gera de novo.">♻️ Refazer (só travadas)</button>
-                    <button onclick="openSubstitute()" class="bg-teal-100 text-teal-800 font-bold px-4 py-2 rounded-lg shadow hover:bg-teal-200 transition text-sm" title="Quando um professor sai ou falta: sugere quem pode cobrir cada aula">🔄 Substituir professor</button>
+                    <button onclick="openSubstitute()" class="bg-teal-100 text-teal-800 font-bold px-4 py-2 rounded-lg shadow hover:bg-teal-200 transition text-sm" title="Trocar o professor de forma permanente, ou cobrir aulas só no dia em que alguém faltar">🔄 Substituir professor / aula</button>
                     <button onclick="clearSchedule()" class="bg-red-100 text-red-700 font-bold px-4 py-2 rounded-lg shadow hover:bg-red-200 transition text-sm" title="Remove aulas soltas. Aulas com o CADEADO não serão apagadas.">🗑️ Limpar Soltas</button>
                 </div>
             </div>
@@ -443,15 +443,21 @@
         <div class="absolute inset-0 bg-black bg-opacity-40" onclick="closeSubstitute()"></div>
         <div class="relative bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
-                <h3 class="font-bold text-lg text-school-primary">Substituir professor</h3>
+                <h3 class="font-bold text-lg text-school-primary">Substituir professor / aula</h3>
                 <button onclick="closeSubstitute()" class="text-gray-500 hover:text-red-600 font-bold text-xl leading-none">&times;</button>
+            </div>
+            <div class="px-4 pt-3 flex gap-2 flex-wrap">
+                <button id="subModePerm" onclick="setSubMode('perm')" class="text-xs font-bold px-3 py-2 rounded-lg border">Trocar professor (permanente)</button>
+                <button id="subModeCover" onclick="setSubMode('cover')" class="text-xs font-bold px-3 py-2 rounded-lg border">Cobrir aula (só em um dia)</button>
             </div>
             <div class="p-4 border-b flex gap-3 flex-wrap items-end">
                 <label class="text-xs font-bold text-gray-700">Professor que sai / falta<select id="subTeacher" onchange="renderSubstitute()" class="mt-1 block border border-gray-300 rounded px-2 py-2 text-sm bg-white"></select></label>
-                <label class="text-xs font-bold text-gray-700">Quando<select id="subDay" onchange="renderSubstitute()" class="mt-1 block border border-gray-300 rounded px-2 py-2 text-sm bg-white"></select></label>
-                <button onclick="subApplyAll()" class="bg-school-accent text-white font-bold px-4 py-2 rounded text-sm hover:bg-opacity-90">Aplicar melhor sugestão em todas</button>
+                <label id="subDayWrap" class="text-xs font-bold text-gray-700">Quando<select id="subDay" onchange="renderSubstitute()" class="mt-1 block border border-gray-300 rounded px-2 py-2 text-sm bg-white"></select></label>
+                <label id="subDateWrap" class="hidden text-xs font-bold text-gray-700">Data da falta<input type="date" id="subDate" onchange="renderSubstitute()" class="mt-1 block border border-gray-300 rounded px-2 py-2 text-sm bg-white"></label>
+                <button id="subApplyAllBtn" onclick="subApplyAll()" class="bg-school-accent text-white font-bold px-4 py-2 rounded text-sm hover:bg-opacity-90">Aplicar melhor sugestão em todas</button>
+                <button id="subCoverAllBtn" onclick="coverApplyAll()" class="hidden bg-school-accent text-white font-bold px-4 py-2 rounded text-sm hover:bg-opacity-90">Escolher o melhor substituto para todas</button>
             </div>
-            <p class="px-4 pt-3 text-[11px] text-gray-500">A troca altera a grade do semestre aberto (não é só por um dia) e pode ser desfeita com Ctrl+Z. Só aparecem professores que lecionam aquela disciplina para a turma.</p>
+            <p id="subNote" class="px-4 pt-3 text-[11px] text-gray-500"></p>
             <div id="subBody" class="p-4 overflow-y-auto flex-1 text-sm"></div>
         </div>
     </div>
@@ -617,6 +623,7 @@
         function saveData() {
             try {
                 localStorage.setItem('sys_version', String(SCHEMA_VERSION));
+                pruneSubs(); localStorage.setItem('sys_subs', JSON.stringify(subsList));
                 localStorage.setItem('sys_classes', JSON.stringify(classes));
                 localStorage.setItem('sys_matriz', JSON.stringify(matriz));
                 localStorage.setItem('sys_teachers', JSON.stringify(teachers));
@@ -634,6 +641,7 @@
             const p = readLS('sys_periods'); if (Array.isArray(p)) periods = p;
             const s2 = readLS('sys_schedules');
             if (s2 && typeof s2 === 'object') schedules = s2; else { const old = readLS('sys_schedule'); if (old && typeof old === 'object') schedules = { 1: old, 2: {} }; }
+            const sb = readLS('sys_subs'); if (Array.isArray(sb)) subsList = sb;
             const st = readLS('sys_settings'); if (st && typeof st === 'object') settings = Object.assign({ saturday: false }, st);
             isSecondSemester = localStorage.getItem('sys_sem') === '2';
             normalizeState();
@@ -695,7 +703,7 @@
         }
 
         function exportBackup(tag) {
-            const data = { schemaVersion: SCHEMA_VERSION, classes, periods, matriz, teachers, schedules, settings, secondSemester: isSecondSemester };
+            const data = { schemaVersion: SCHEMA_VERSION, classes, periods, matriz, teachers, schedules, settings, substitutions: subsList, secondSemester: isSecondSemester };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `horarios-backup${tag ? '-' + tag : ''}-${new Date().toISOString().slice(0, 10)}.json`; 
             document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -713,7 +721,7 @@
                 if (!confirm(`Importar o backup (${resumo})?${extra}\n\nIsto SUBSTITUI os dados atuais. Um backup do estado atual será baixado antes, por segurança.`)) return;
                 try { exportBackup('antes-da-importacao'); } catch (e) { console.error(e); }
                 classes = v.classes; periods = v.periods; matriz = v.matriz; teachers = v.teachers; schedules = v.schedules;
-                settings = v.settings; isSecondSemester = v.secondSemester;
+                settings = v.settings; isSecondSemester = v.secondSemester; subsList = v.substitutions;
                 history = []; future = []; normalizeState();
                 document.getElementById('semesterToggle').checked = isSecondSemester; document.getElementById('settingSaturday').checked = settings.saturday; renderAll();
                 toast('Backup restaurado com sucesso!' + (v.dropped ? `\n${v.dropped} item(ns) inconsistente(s) ignorado(s).` : ''), v.dropped ? 'warn' : 'ok');
@@ -1213,6 +1221,7 @@
             const t = teachers.find(x => x.id === id); if (!t || !confirm(`Excluir "${t.name}" e remover as aulas dele da grade?`)) return;
             teachers = teachers.filter(x => x.id !== id);
             [1, 2].forEach(s => Object.values(schedules[s]).forEach(cells => { Object.keys(cells).forEach(k => { if (cells[k].t === id) delete cells[k]; }); }));
+            pruneSubs();
             if (editingTeacherId === id) cancelEditTeacher(); 
             if (activeTeacherView === id) activeTeacherView = teachers.length > 0 ? teachers[0].id : null;
             history = []; future = []; renderAll();
@@ -1904,7 +1913,11 @@
                     });
                 });
             });
-            return { classes: cls, periods: per, matriz: mat, teachers: tch, schedules: sch, settings: { saturday: !!(isObj(d.settings) && d.settings.saturday) }, secondSemester: !!d.secondSemester, dropped };
+            const subs = (Array.isArray(d.substitutions) ? d.substitutions.slice(0, 5000) : []).filter(x => {
+                const ok = isObj(x) && typeof x.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && (x.sem === 1 || x.sem === 2) && classIds.has(x.classId) && classPer.has(x.periodId) && matMap.has(x.mId) && tIds.has(x.absentId) && tIds.has(x.coverId);
+                if (!ok) dropped++; return ok;
+            }).map((x, i) => ({ id: 'S' + i + '-' + Date.now(), date: x.date, sem: x.sem, classId: x.classId, periodId: x.periodId, mId: x.mId, absentId: x.absentId, coverId: x.coverId }));
+            return { classes: cls, periods: per, matriz: mat, teachers: tch, schedules: sch, substitutions: subs, settings: { saturday: !!(isObj(d.settings) && d.settings.saturday) }, secondSemester: !!d.secondSemester, dropped };
         }
 
         // ================= AUDITORIA E SUGESTÕES =================
@@ -2218,7 +2231,8 @@
             tsel.innerHTML = teachers.map(t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');
             if (keep && teachers.some(t => t.id === keep)) tsel.value = keep;
             document.getElementById('subDay').innerHTML = '<option value="all">Todos os dias</option>' + getDays().map((dn, i) => `<option value="${i}">${esc(dn)}</option>`).join('');
-            document.getElementById('subModal').classList.remove('hidden'); renderSubstitute();
+            const dEl = document.getElementById('subDate'); if (!dEl.value) { const n = new Date(); dEl.value = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; }
+            document.getElementById('subModal').classList.remove('hidden'); setSubMode(subMode);
         }
         function closeSubstitute() { document.getElementById('subModal').classList.add('hidden'); }
         function subRows() {
@@ -2240,6 +2254,7 @@
         }
         let subCache = [];
         function renderSubstitute() {
+            if (subMode === 'cover') return renderCover();
             subCache = subRows();
             const body = document.getElementById('subBody');
             if (!subCache.length) { body.innerHTML = '<div class="text-gray-500">Este professor não tem aulas no período escolhido.</div>'; return; }
@@ -2343,6 +2358,118 @@
                 h += '</tbody></table>';
             });
             return h + '</div>';
+        }
+
+        // ================= SUBSTITUIÇÃO PONTUAL (SÓ NO DIA DA FALTA) =================
+        // Não altera a grade: grava um registro {data, aula, turma, ausente, substituto}.
+        let subsList = [], subMode = 'perm';
+        function pruneSubs() {
+            subsList = (subsList || []).filter(x => x && classes.some(c => c.id === x.classId) && teachers.some(t => t.id === x.absentId) && teachers.some(t => t.id === x.coverId) && matriz.some(m => m.id === x.mId) && periods.some(p => p.id === x.periodId));
+        }
+        function setSubMode(mode) {
+            subMode = mode === 'cover' ? 'cover' : 'perm';
+            const cover = subMode === 'cover', on = 'bg-school-primary text-white border-school-primary', off = 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50';
+            document.getElementById('subModePerm').className = 'text-xs font-bold px-3 py-2 rounded-lg border ' + (cover ? off : on);
+            document.getElementById('subModeCover').className = 'text-xs font-bold px-3 py-2 rounded-lg border ' + (cover ? on : off);
+            document.getElementById('subDayWrap').classList.toggle('hidden', cover);
+            document.getElementById('subApplyAllBtn').classList.toggle('hidden', cover);
+            document.getElementById('subDateWrap').classList.toggle('hidden', !cover);
+            document.getElementById('subCoverAllBtn').classList.toggle('hidden', !cover);
+            document.getElementById('subNote').textContent = cover
+                ? 'Só vale para a data escolhida: a grade NÃO é alterada. Mostra quem está livre em cada horário (sem aula e sem folga) e guarda o registro da substituição para consulta e impressão.'
+                : 'A troca altera a grade do semestre aberto (não é só por um dia) e pode ser desfeita com Ctrl+Z. Só aparecem professores que lecionam aquela disciplina para a turma.';
+            renderSubstitute();
+        }
+        const WEEKDAYS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+        function parseDateStr(v) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); if (!m) return null; const dt = new Date(+m[1], +m[2] - 1, +m[3]); return isNaN(dt) ? null : dt; }
+        function fmtDate(v) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? `${m[3]}/${m[2]}/${m[1]}` : v; }
+        function coverBusyBySub(oid, date, pid, m) {
+            return subsList.some(x => x.sem === sem() && x.date === date && x.periodId === pid && x.coverId === oid && !(m.fc && x.mId === m.id));
+        }
+        // professores livres naquele dia/horário
+        function coverCandidates(c, m, d, pid, date, absentId) {
+            const key = cellKey(d, pid), period = getPeriod(pid);
+            return teachers.filter(o => o.id !== absentId).map(o => {
+                if (classes.some(cl => { const x = sched(cl.id)[key]; return x && x.t === o.id && !(m.fc && x.m === m.id); })) return null;
+                if (period && isFolga(o, d, period)) return null;
+                if (coverBusyBySub(o.id, date, pid, m)) return null;
+                const warns = [];
+                if (o.planDay === d) warns.push('é o dia de planejamento dele(a)');
+                const load = teacherDayLoad(o.id, d) + subsList.filter(x => x.sem === sem() && x.date === date && x.coverId === o.id).length;
+                if (load >= (o.maxPerDay || 8)) warns.push(`já teria ${load} aula(s) no dia (limite ${o.maxPerDay || 8})`);
+                const rel = teacherTeaches(o, m.id, c.id) ? 0 : (o.matrizIds.some(mid => (matriz.find(x => x.id === mid) || {}).subject === m.subject) ? 1 : 2);
+                return { t: o, rel, warns, load };
+            }).filter(Boolean).sort((a, b) => a.rel - b.rel || a.warns.length - b.warns.length || a.load - b.load);
+        }
+        let coverCache = { rows: [], date: '' };
+        function coverRows() {
+            const tid = document.getElementById('subTeacher').value, date = document.getElementById('subDate').value, dt = parseDateStr(date);
+            if (!dt) return { err: 'Escolha a data da falta.' };
+            const d = (dt.getDay() + 6) % 7;
+            if (d >= getDays().length) return { err: `${fmtDate(date)} é ${WEEKDAYS[dt.getDay()]}: não é dia letivo na estrutura atual.` };
+            const rows = [];
+            classes.forEach(c => Object.entries(sched(c.id)).forEach(([k, cell]) => {
+                if (cell.t !== tid || keyDay(k) !== d) return;
+                const m = matriz.find(x => x.id === cell.m), pid = keyPeriod(k); if (!m) return;
+                const existing = subsList.find(x => x.sem === sem() && x.date === date && x.classId === c.id && x.periodId === pid);
+                rows.push({ c, pid, m, d, existing, cands: existing ? [] : coverCandidates(c, m, d, pid, date, tid) });
+            }));
+            rows.sort((a, b) => pidIdx(a.pid) - pidIdx(b.pid) || a.c.name.localeCompare(b.c.name));
+            return { rows, date, d, tid, dt };
+        }
+        function renderCover() {
+            const body = document.getElementById('subBody'), R = coverRows();
+            if (R.err) { coverCache = { rows: [], date: '' }; body.innerHTML = `<div class="text-gray-500">${esc(R.err)}</div>` + coverRegistered(''); return; }
+            coverCache = R;
+            const REL = ['bg-green-50 border-green-300 text-green-800 hover:bg-green-100', 'bg-blue-50 border-blue-300 text-blue-800 hover:bg-blue-100', 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'];
+            const RELT = ['leciona para esta turma', 'mesma disciplina', 'outra área'];
+            let html = `<div class="text-xs text-gray-600 mb-2">${esc(fmtDate(R.date))} · ${esc(WEEKDAYS[R.dt.getDay()])} — ${R.rows.length} aula(s) do professor neste dia (${sem()}º semestre).</div>`;
+            if (!R.rows.length) html += '<div class="text-gray-500 mb-3">Este professor não tem aulas neste dia da semana.</div>';
+            else html += `<table class="w-full text-left border-collapse text-sm"><thead><tr class="bg-gray-100 text-xs text-gray-600 uppercase border-b"><th class="p-2">Aula</th><th class="p-2">Turma · Disciplina</th><th class="p-2">Quem está livre neste horário</th></tr></thead><tbody>${R.rows.map((r, i) => {
+                const p = getPeriod(r.pid);
+                let cell;
+                if (r.existing) { const cv = teachers.find(t => t.id === r.existing.coverId); cell = `<span class="text-xs font-bold text-green-700">✔ Coberta por ${esc(cv ? cv.name : '?')}</span> <button onclick="coverRemove('${esc(r.existing.id)}')" class="text-[11px] text-red-600 font-bold underline ml-1">desfazer</button>`; }
+                else if (!r.cands.length) cell = '<span class="text-xs text-red-600">Ninguém livre neste horário.</span>';
+                else cell = r.cands.map((cd, j) => `<button onclick="coverApply(${i}, ${j})" title="${esc(RELT[cd.rel] + (cd.warns.length ? ' • ⚠ ' + cd.warns.join(' • ') : '') + ` • ${cd.load} aula(s) no dia`)}" class="text-[11px] font-bold border rounded px-2 py-1 mr-1 mb-1 ${REL[cd.rel]}">${esc(shortTeacher(cd.t))}${cd.warns.length ? ' ⚠' : ''}</button>`).join('');
+                return `<tr class="border-b align-top"><td class="p-2 whitespace-nowrap">${esc(p ? p.label : '')}<br><span class="text-xs text-gray-500">${esc(p ? p.time : '')}</span></td><td class="p-2">${esc(r.c.name)}<br><span class="text-xs text-gray-600">${esc(r.m.subject)}</span></td><td class="p-2">${cell}</td></tr>`;
+            }).join('')}</tbody></table><div class="text-[11px] text-gray-500 mt-2">Verde = leciona para a turma · Azul = mesma disciplina · Cinza = outra área · ⚠ = aviso (passe o mouse). Só aparecem professores sem aula e sem folga naquele horário.</div>`;
+            body.innerHTML = html + coverRegistered(R.date);
+        }
+        function coverRegistered(date) {
+            const list = subsList.filter(x => x.sem === sem()).slice().sort((a, b) => (b.date.localeCompare(a.date)) || (pidIdx(a.periodId) - pidIdx(b.periodId))).slice(0, 40);
+            if (!list.length) return '<div class="mt-5 pt-3 border-t text-xs text-gray-400">Nenhuma substituição pontual registrada.</div>';
+            const nm = id => (teachers.find(t => t.id === id) || {}).name || '?';
+            return `<div class="mt-5 pt-3 border-t"><div class="flex justify-between items-center mb-2 flex-wrap gap-2"><b class="text-sm text-school-primary">Substituições registradas (${sem()}º sem.)</b>${date ? `<button onclick="coverPrint('${esc(date)}')" class="text-xs font-bold bg-white border border-gray-300 rounded px-3 py-1 hover:bg-gray-100">🖨️ Imprimir o dia ${esc(fmtDate(date))}</button>` : ''}</div>` +
+                list.map(x => { const p = getPeriod(x.periodId), m = matriz.find(i => i.id === x.mId); return `<div class="text-xs border-b py-1 flex justify-between gap-2"><span>${esc(fmtDate(x.date))} · ${esc(p ? p.label : '')} · ${esc(className(x.classId))} · ${esc(m ? m.subject : '')}: <b>${esc(nm(x.absentId))}</b> → <b>${esc(nm(x.coverId))}</b></span><button onclick="coverRemove('${esc(x.id)}')" class="text-red-500 font-bold" title="Remover registro">&times;</button></div>`; }).join('') + '</div>';
+        }
+        function coverApply(i, j) {
+            const r = coverCache.rows[i]; if (!r || r.existing) return;
+            const cands = coverCandidates(r.c, r.m, r.d, r.pid, coverCache.date, coverCache.tid), cd = cands.find(x => x.t.id === ((r.cands[j] || {}).t || {}).id);
+            if (!cd) { toast('Esse professor já não está livre neste horário.', 'warn'); return renderCover(); }
+            subsList.push({ id: 'S' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), date: coverCache.date, sem: sem(), classId: r.c.id, periodId: r.pid, mId: r.m.id, absentId: coverCache.tid, coverId: cd.t.id });
+            saveData(); renderCover();
+            toast(`${r.m.subject} (${r.c.name}, ${fmtDate(coverCache.date)}) coberta por ${cd.t.name}. A grade não foi alterada.`, 'ok');
+        }
+        function coverApplyAll() {
+            const R = coverRows(); if (R.err || !R.rows.length) return;
+            let done = 0, left = 0;
+            R.rows.forEach(r => {
+                if (r.existing) return;
+                const best = coverCandidates(r.c, r.m, r.d, r.pid, R.date, R.tid).find(cd => !cd.warns.length) || null;
+                if (!best) { left++; return; }
+                subsList.push({ id: 'S' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), date: R.date, sem: sem(), classId: r.c.id, periodId: r.pid, mId: r.m.id, absentId: R.tid, coverId: best.t.id }); done++;
+            });
+            saveData(); renderCover();
+            toast(`${done} aula(s) cobertas só em ${fmtDate(R.date)}.` + (left ? `\n${left} sem substituto livre e sem aviso: escolha manualmente.` : ''), left ? 'warn' : 'ok');
+        }
+        function coverRemove(id) { subsList = subsList.filter(x => x.id !== id); saveData(); renderCover(); }
+        function coverPrint(date) {
+            const list = subsList.filter(x => x.sem === sem() && x.date === date).sort((a, b) => pidIdx(a.periodId) - pidIdx(b.periodId));
+            if (!list.length) return toast('Não há substituições registradas nesse dia.', 'warn');
+            const dt = parseDateStr(date), nm = id => (teachers.find(t => t.id === id) || {}).name || '?';
+            const rows = list.map(x => { const p = getPeriod(x.periodId), m = matriz.find(i => i.id === x.mId); return `<tr><td><b>${esc(p ? p.label : '')}</b><br><span style="font-size:9px">${esc(p ? p.time : '')}</span></td><td>${esc(className(x.classId))}</td><td>${esc(m ? m.subject : '')}</td><td>${esc(nm(x.absentId))}</td><td><b>${esc(nm(x.coverId))}</b></td></tr>`; }).join('');
+            document.getElementById('printContainer').innerHTML = `<div class="print-page">${pageHead('Substituições — ' + fmtDate(date) + (dt ? ' (' + WEEKDAYS[dt.getDay()] + ')' : ''))}<table class="ptable"><thead><tr><th style="width:90px">Aula</th><th>Turma</th><th>Disciplina</th><th>Professor ausente</th><th>Substituto</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+            window.print();
         }
 
         // ================= IMPRESSÃO E EXPORTAÇÃO =================
