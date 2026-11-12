@@ -2658,7 +2658,7 @@
                     return `<button onclick="coverApply(${i}, ${j}, ${k})" title="${esc(tip)}" class="text-[11px] font-bold border rounded px-2 py-1 mr-1 mb-1 ${REL[same ? 0 : 1]}">${esc(shortTeacher(cd.t))}${multi && sm ? ' · ' + esc(sm.subject) : ''}${cd.warns.length ? ' ⚠' : ''}</button>`;
                 }).join('')).join('');
                 return `<tr class="border-b align-top"><td class="p-2 whitespace-nowrap">${esc(p ? p.label : '')}<br><span class="text-xs text-gray-500">${esc(p ? p.time : '')}</span></td><td class="p-2">${esc(r.c.name)}<br><span class="text-xs text-gray-600">${esc(r.m.subject)}</span></td><td class="p-2">${cell}</td></tr>`;
-            }).join('')}</tbody></table><div class="text-[11px] text-gray-500 mt-2">O substituto entra com a disciplina dele(a): quem leciona mais de uma nesta turma aparece uma vez por disciplina (ex.: "Sane · Física"). Verde = mesma disciplina da aula · Azul = outra disciplina · ⚠ = aviso (passe o mouse). Só aparecem professores desta turma, sem aula, sem folga e não ausentes naquele horário.</div>`;
+            }).join('')}</tbody></table><div class="text-[11px] text-gray-500 mt-2">O substituto entra com a disciplina dele(a): quem leciona mais de uma nesta turma aparece uma vez por disciplina (ex.: "João · Português"). Verde = mesma disciplina da aula · Azul = outra disciplina · ⚠ = aviso (passe o mouse). Só aparecem professores desta turma, sem aula, sem folga e não ausentes naquele horário.</div>`;
             body.innerHTML = html + coverRegistered(R.date);
         }
         function coverRegistered(date) {
