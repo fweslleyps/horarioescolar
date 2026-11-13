@@ -487,6 +487,30 @@
         </div>
     </div>
 
+    <!-- Novo ano letivo -->
+    <div id="newYearModal" class="hidden fixed inset-0 flex items-center justify-center p-4 no-print" style="z-index:57">
+        <div class="absolute inset-0 bg-black bg-opacity-40" onclick="closeNewYear()"></div>
+        <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
+                <h3 class="font-bold text-lg text-red-700">🎓 Iniciar novo ano letivo</h3>
+                <button onclick="closeNewYear()" class="text-gray-500 hover:text-red-600 font-bold text-xl leading-none">&times;</button>
+            </div>
+            <div class="p-4 overflow-y-auto text-sm text-gray-700">
+                <p id="nySummary" class="text-xs mb-3"></p>
+                <p class="text-xs mb-3">O que será feito: (1) baixar o backup do ano que termina; (2) apagar as aulas do 1º e do 2º semestre; (3) voltar para o 1º semestre. <b>Turmas, professores e matriz são mantidos.</b> Como os dados estão na nuvem, a limpeza vale para <b>todos os usuários</b>.</p>
+                <label class="block text-xs font-bold mb-3">Ano que está terminando (para o nome do arquivo)<input id="nyYear" type="text" maxlength="9" class="mt-1 block w-32 border border-gray-300 rounded px-2 py-1 text-sm font-normal"></label>
+                <label class="flex items-start gap-2 text-xs mb-2 cursor-pointer"><input id="nyLocked" type="checkbox" class="mt-0.5"> <span>Manter as aulas com cadeado (🔒)</span></label>
+                <label class="flex items-start gap-2 text-xs mb-4 cursor-pointer"><input id="nySubs" type="checkbox" class="mt-0.5" checked> <span>Apagar também as substituições, ausências e cessões do ano anterior</span></label>
+                <label class="block text-xs font-bold">Para confirmar, digite <span class="text-red-700">NOVO ANO</span><input id="nyConfirm" type="text" autocomplete="off" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm font-normal uppercase"></label>
+                <p class="text-[11px] text-gray-500 mt-3">Para desfazer: o Ctrl+Z recupera as aulas; as substituições e o resto voltam importando o arquivo baixado ou restaurando uma versão automática em Backup.</p>
+            </div>
+            <div class="p-4 border-t flex justify-end gap-2">
+                <button onclick="closeNewYear()" class="text-xs font-bold bg-white border border-gray-300 rounded px-4 py-2 hover:bg-gray-50">Cancelar</button>
+                <button onclick="nyRun()" class="text-xs font-bold bg-red-600 text-white rounded px-4 py-2 hover:bg-red-700">Baixar backup e iniciar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Substituição de professor -->
     <div id="subModal" class="hidden fixed inset-0 flex items-center justify-center p-4" style="z-index:55">
         <div class="absolute inset-0 bg-black bg-opacity-40" onclick="closeSubstitute()"></div>
@@ -980,7 +1004,40 @@
             h += '<div class="border rounded-lg p-3"><div class="flex justify-between items-center flex-wrap gap-2"><b class="text-school-primary text-sm">🕘 Versões automáticas (neste computador)</b><button onclick="abSnapNow()" class="text-xs font-bold bg-white border border-gray-300 rounded px-3 py-1 hover:bg-gray-50">Guardar versão agora</button></div><p class="text-xs text-gray-600 mt-1">O sistema guarda uma versão ao abrir e depois a cada 10 minutos de edição (últimas ' + AB_KEEP + '). Servem para <b>desfazer um erro</b>: a nuvem copia tudo, inclusive enganos, e estas versões permitem voltar. Ficam só neste computador e navegador.</p>';
             if (abErr) h += `<p class="text-xs text-red-600 mt-2">${esc(abErr)}</p>`;
             h += snaps.length ? '<div class="mt-2">' + snaps.map(s => `<div class="text-xs border-b py-1.5 flex justify-between gap-2 items-center"><span><b>${esc(fmt(s.ts))}</b> · ${esc(s.sum)}</span><button onclick="abRestore(${s.ts})" class="font-bold bg-white border border-gray-300 rounded px-2 py-1 hover:bg-gray-50 whitespace-nowrap">Restaurar</button></div>`).join('') + '</div>' : '<p class="text-xs text-gray-400 mt-2">Nenhuma versão guardada ainda.</p>';
+            h += '</div><div class="border border-red-200 bg-red-50 rounded-lg p-3 mt-4"><b class="text-red-800 text-sm">🎓 Novo ano letivo</b><p class="text-xs text-gray-700 mt-1">Baixa um backup do ano que termina e limpa as grades (1º e 2º semestres) e, se quiser, as substituições e ausências antigas. Mantém turmas, professores e matriz para você ajustar.</p><button onclick="closeAbModal(); openNewYear()" class="mt-2 text-xs font-bold bg-red-600 text-white rounded px-3 py-2 hover:bg-red-700">Iniciar novo ano…</button>';
             body.innerHTML = h + '</div>';
+        }
+        // ---- Novo ano letivo ----
+        function nyCount() {
+            const n = o => Object.values(o || {}).reduce((t, cells) => t + Object.keys(cells || {}).length, 0);
+            const lk = o => Object.values(o || {}).reduce((t, cells) => t + Object.values(cells || {}).filter(c => c && c.locked).length, 0);
+            return { a1: n(schedules[1]), a2: n(schedules[2]), lock: lk(schedules[1]) + lk(schedules[2]), subs: subsList.length, abs: absList.length };
+        }
+        function openNewYear() {
+            const c = nyCount();
+            document.getElementById('nyYear').value = String(new Date().getFullYear());
+            document.getElementById('nyLocked').checked = false; document.getElementById('nySubs').checked = true; document.getElementById('nyConfirm').value = '';
+            document.getElementById('nySummary').innerHTML = `Hoje existem <b>${c.a1}</b> aula(s) no 1º semestre, <b>${c.a2}</b> no 2º (${c.lock} com cadeado 🔒), <b>${c.subs}</b> substituição(ões) e <b>${c.abs}</b> ausência(s)/cessão(ões) registradas.`;
+            document.getElementById('newYearModal').classList.remove('hidden');
+        }
+        function closeNewYear() { document.getElementById('newYearModal').classList.add('hidden'); }
+        async function nyRun() {
+            if (document.getElementById('nyConfirm').value.trim().toUpperCase() !== 'NOVO ANO') return toast('Digite NOVO ANO para confirmar.', 'warn');
+            const ano = (document.getElementById('nyYear').value || '').replace(/[^\w-]/g, '') || String(new Date().getFullYear());
+            const keepLocked = document.getElementById('nyLocked').checked, clearSubs = document.getElementById('nySubs').checked;
+            try { exportBackup('fim-' + ano); } catch (e) { if (!confirm('Não consegui baixar o backup do ano. Continuar mesmo assim?')) return; }
+            try { await abSnapSave(JSON.stringify(backupObj())); } catch (e) {}
+            isSecondSemester = false; document.getElementById('semesterToggle').checked = false; history = []; future = [];
+            snapshot();
+            [1, 2].forEach(sm => classes.forEach(c => {
+                const cells = (schedules[sm] || (schedules[sm] = {}))[c.id];
+                if (!cells) return;
+                Object.keys(cells).forEach(k => { if (!(keepLocked && cells[k] && cells[k].locked)) delete cells[k]; });
+            }));
+            if (clearSubs) { subsList = []; absList = []; }
+            swapDate2 = ''; coverCache = { rows: [], date: '' };
+            normalizeState(); saveData(); renderAll(); closeNewYear();
+            toast(`Novo ano iniciado. O backup de ${ano} foi baixado e as grades foram limpas. Agora ajuste turmas, professores e matriz.`, 'ok');
         }
         async function abRestore(ts) {
             let rec; try { rec = await idbRun('snaps', 'readonly', s => s.get(ts)); } catch (e) {}
