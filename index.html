@@ -345,7 +345,7 @@
                 
                 <div class="flex gap-4 text-xs flex-wrap items-center pt-2">
                     <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="teacherAvoidConsecutive" class="rounded text-school-primary"> Evitar aulas seguidas (Geminadas)</label>
-                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="teacherDiretor" class="rounded text-school-primary"> Diretor de Turma (Sem 6ª/7ª de seg)</label>
+                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="teacherDiretor" class="rounded text-school-primary"> Diretor de Turma (sem 6ª/7ª aula na seg; evitar 8ª/9ª)</label>
                 </div>
                 
                 <div class="flex justify-end gap-2 pt-2">
@@ -1183,8 +1183,10 @@
                 }
             }
             if (t.isDiretor && d === 0) { 
+                // Diretor de turma na segunda: proibido na 6ª e 7ª aula; evitar (aviso amarelo) a 8ª e 9ª
                 const pIdx = classPeriods().findIndex(x => x.id === periodId);
-                if (pIdx === classPeriods().length - 1 || pIdx === classPeriods().length - 2) res.soft.push('Diretor: evitar últimas de segunda'); 
+                if (pIdx === 5 || pIdx === 6) res.hard.push('Diretor de Turma: não pode ter a 6ª e a 7ª aula da segunda');
+                else if (pIdx === 7 || pIdx === 8) res.soft.push('Diretor: evitar a 8ª e a 9ª aula da segunda');
             }
             
             return res;
