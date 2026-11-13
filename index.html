@@ -219,6 +219,14 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <input type="text" id="matrizSubjectName" placeholder="Nome da Disciplina (Ex: História)" required class="border border-gray-300 rounded px-3 py-2 text-sm bg-white">
                     <input type="number" id="matrizAulasSemanal" placeholder="Aulas Semanais padrão (Ex: 3)" required min="1" max="15" class="border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+                    <label class="md:col-span-2 text-xs font-bold text-gray-700">Período letivo
+                        <select id="matrizPeriodo" class="mt-1 block w-full md:w-auto border border-gray-300 rounded px-3 py-2 text-sm bg-white font-normal">
+                            <option value="anual">Anual (1º e 2º semestres)</option>
+                            <option value="1">Só no 1º semestre</option>
+                            <option value="2">Só no 2º semestre</option>
+                        </select>
+                        <span class="block text-[11px] font-normal text-gray-500 mt-1">Disciplinas de um semestre só não são alocadas (nem cobradas) no outro, mesmo com professor atribuído.</span>
+                    </label>
                     <label class="md:col-span-2 flex items-start gap-2 cursor-pointer text-xs text-gray-700">
                         <input type="checkbox" id="matrizFC" class="rounded text-school-primary w-4 h-4 mt-0.5">
                         <span><b>Formação Cidadã (FC)</b> — O sistema forçará a que esta aula ocorra no mesmo horário em todas as turmas da mesma série.</span>
@@ -691,8 +699,11 @@
             return clash && parts.length > 1 ? `${first} ${parts[1][0]}.` : first;
         }
 
+        // Disciplinas anuais (padrão) ou só do 1º / só do 2º semestre (m.periodo = '1' | '2')
+        function mActive(m, s) { const p = m && m.periodo; return !(p === '1' || p === '2') || String(p) === String(s || sem()); }
         function getEffectiveAulas(mid, cid) {
             const m = matriz.find(x => x.id === mid); if (!m) return 0;
+            if (!mActive(m)) return 0;
             const profs = teachers.filter(t => teacherTeaches(t, mid, cid));
             if (profs.length === 0) return m.aulas;
             let totalExplicit = 0, hasImplicit = false;
@@ -708,7 +719,7 @@
             return Math.max(0, eff - explicit);
         }
         
-        function cotaDiffs(m) { return m.classIds.map(cid => ({ cid, eff: getEffectiveAulas(m.id, cid) })).filter(x => x.eff !== m.aulas); }
+        function cotaDiffs(m) { if (!mActive(m)) return []; return m.classIds.map(cid => ({ cid, eff: getEffectiveAulas(m.id, cid) })).filter(x => x.eff !== m.aulas); }
         function cotaNotes(mids) {
             const out = [];
             mids.forEach(mid => {
@@ -1074,8 +1085,11 @@
                     if (p && p.shift === 'tarde') { lost++; const m = matriz.find(x => x.id === cells[k].m); const n = shortName(c.name) + ' · ' + (m ? m.subject : '?'); lostBy[n] = (lostBy[n] || 0) + 1; delete cells[k]; }
                 });
             });
+            let only1 = 0;
+            classes.forEach(c => { const cells = copy[c.id] || {}; Object.keys(cells).forEach(k => { const mm = matriz.find(x => x.id === cells[k].m); if (mm && !mActive(mm, 2)) { delete cells[k]; only1++; } }); });
             schedules[2] = copy;
             refreshSchedule();
+            if (only1) toast(`${only1} aula(s) de disciplinas só do 1º semestre não foram copiadas.`, 'ok');
             if (lost) {
                 const det = Object.entries(lostBy).slice(0, 6).map(([n, q2]) => `${n}: ${q2}`).join('\n');
                 toast(`Grade copiada. ${lost} aula(s) de turmas de estágio ficaram sem horário (tarde removida):\n${det}\nUse o Gerador Automático ou a aba Auditoria para realocá-las.`, 'warn');
@@ -1125,6 +1139,7 @@
             
             if (!t || !m || !c || !p || p.type !== 'class') { res.hard.push('Dados inválidos para esta célula'); return res; }
             if (!m.classIds.includes(classId)) res.hard.push(`${m.subject} não faz parte da matriz de ${c.name}`);
+            if (!mActive(m)) res.hard.push(`${m.subject} só é lecionada no ${m.periodo}º semestre`);
             if (!teacherTeaches(t, matrizId, classId)) res.hard.push(`${t.name} não leciona ${m.subject} para ${c.name}`);
             if (isSecondSemester && c.isEstagio && p.shift === 'tarde') res.hard.push(`${c.name} está em estágio à tarde`);
             if (isFolga(t, d, p)) res.hard.push(`${t.name} está de folga neste horário`);
@@ -1346,6 +1361,7 @@
             const subject = sanitize(document.getElementById('matrizSubjectName').value);
             const aulas = parseInt(document.getElementById('matrizAulasSemanal').value);
             const fc = document.getElementById('matrizFC').checked;
+            const periodo = document.getElementById('matrizPeriodo').value; const per = (periodo === '1' || periodo === '2') ? periodo : 'anual';
             const classIds = Array.from(document.querySelectorAll('.matriz-class-cb:checked')).map(cb => cb.value);
             
             if (!subject || !(aulas > 0)) return; if (classIds.length === 0) return alert('Selecione pelo menos uma turma para esta disciplina.');
@@ -1353,7 +1369,7 @@
             if (editingMatrizId) {
                 const m = matriz.find(x => x.id === editingMatrizId);
                 if (m) {
-                    m.subject = subject; m.aulas = aulas; m.fc = fc; m.classIds = classIds;
+                    m.subject = subject; m.aulas = aulas; m.fc = fc; m.periodo = per; m.classIds = classIds;
                     teachers.forEach(t => {
                         if (t.turmas && t.turmas[m.id]) {
                             t.turmas[m.id] = t.turmas[m.id].filter(cid => classIds.includes(cid));
@@ -1364,17 +1380,17 @@
                         if (!classIds.includes(cid)) { const cells = schedules[s][cid]; Object.keys(cells).forEach(k => { if (cells[k].m === m.id) delete cells[k]; }); }
                     }));
                 }
-            } else { matriz.push({ id: 'M' + Date.now(), subject, aulas, fc, classIds }); }
+            } else { matriz.push({ id: 'M' + Date.now(), subject, aulas, fc, periodo: per, classIds }); }
             cancelEditMatriz(); renderAll();
         }
         function editMatriz(id) {
             const m = matriz.find(x => x.id === id); if (!m) return;
-            document.getElementById('matrizSubjectName').value = m.subject; document.getElementById('matrizAulasSemanal').value = m.aulas; document.getElementById('matrizFC').checked = m.fc;
+            document.getElementById('matrizSubjectName').value = m.subject; document.getElementById('matrizAulasSemanal').value = m.aulas; document.getElementById('matrizFC').checked = m.fc; document.getElementById('matrizPeriodo').value = (m.periodo === '1' || m.periodo === '2') ? m.periodo : 'anual';
             editingMatrizId = id; document.getElementById('submitMatrizBtn').textContent = 'Salvar Alterações'; document.getElementById('cancelEditMatrizBtn').classList.remove('hidden');
             renderMatrizClassCheckboxes(); window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         function cancelEditMatriz() {
-            editingMatrizId = null; document.getElementById('matrizSubjectName').value = ''; document.getElementById('matrizAulasSemanal').value = ''; document.getElementById('matrizFC').checked = false;
+            editingMatrizId = null; document.getElementById('matrizSubjectName').value = ''; document.getElementById('matrizAulasSemanal').value = ''; document.getElementById('matrizFC').checked = false; document.getElementById('matrizPeriodo').value = 'anual';
             document.querySelectorAll('.matriz-class-cb').forEach(cb => cb.checked = false); document.getElementById('submitMatrizBtn').textContent = 'Cadastrar Disciplina na Matriz'; document.getElementById('cancelEditMatrizBtn').classList.add('hidden');
         }
         function deleteMatriz(id) {
@@ -1400,7 +1416,7 @@
                 return `
                 <tr class="border-b hover:bg-gray-50">
                     <td class="p-3 font-semibold">${esc(m.subject)} ${m.fc ? FC_BADGE : ''}${semSerie.length ? `<div class="text-[10px] text-amber-700">⚠ defina a série: ${esc(semSerie.join(', '))}</div>` : ''}</td>
-                    <td class="p-3">${m.aulas} aulas/sem.${(() => { const df = cotaDiffs(m); return df.length ? `<div class="text-[10px] text-amber-700" title="A carga destas turmas vem das cotas dos professores, não da matriz">⚠ cotas: ${esc(df.slice(0, 3).map(x => shortName(className(x.cid)) + '=' + x.eff).join(', '))}${df.length > 3 ? ' +' + (df.length - 3) : ''}</div>` : ''; })()}</td>
+                    <td class="p-3">${m.aulas} aulas/sem.${(m.periodo === '1' || m.periodo === '2') ? ` <span class="inline-block text-[10px] font-bold bg-purple-100 text-purple-800 rounded px-1.5 py-0.5 ml-1">só ${m.periodo}º sem.</span>` : ''}${(() => { const df = cotaDiffs(m); return df.length ? `<div class="text-[10px] text-amber-700" title="A carga destas turmas vem das cotas dos professores, não da matriz">⚠ cotas: ${esc(df.slice(0, 3).map(x => shortName(className(x.cid)) + '=' + x.eff).join(', '))}${df.length > 3 ? ' +' + (df.length - 3) : ''}</div>` : ''; })()}</td>
                     <td class="p-3 text-xs text-gray-700">${esc(summarizeClasses(m.classIds)) || 'Nenhuma'}</td>
                     <td class="p-3 text-xs text-gray-700">${profHtml || '—'}</td>
                     <td class="p-3 text-center"><button onclick="editMatriz('${m.id}')" class="text-blue-600 font-bold mr-2">Editar</button><button onclick="deleteMatriz('${m.id}')" class="text-red-500 font-bold">&times;</button></td>
@@ -1412,7 +1428,7 @@
         function renderLoadSummary() {
             const el = document.getElementById('loadSummary'); if (!el) return;
             el.innerHTML = classes.map(c => {
-                const mine = matriz.filter(m => m.classIds.includes(c.id));
+                const mine = matriz.filter(m => m.classIds.includes(c.id) && mActive(m));
                 const req = mine.reduce((sum, m) => sum + getEffectiveAulas(m.id, c.id), 0);
                 const semProf = mine.filter(m => !teachers.some(t => teacherTeaches(t, m.id, c.id)));
                 const av = availableSlots(c); const ok = req <= av;
@@ -1676,7 +1692,7 @@
 
             if (!activeClass) { el.innerHTML = ''; return; }
             
-            const ms = matriz.filter(m => m.classIds.includes(activeClass) && teachers.some(t => teacherTeaches(t, m.id, activeClass)));
+            const ms = matriz.filter(m => m.classIds.includes(activeClass) && mActive(m) && teachers.some(t => teacherTeaches(t, m.id, activeClass)));
             let html = `<div><div class="font-bold text-gray-700 mb-2">Faltam alocar (${sem()}º sem.)</div>`;
             
             const rows = ms.map(m => {
@@ -1946,7 +1962,7 @@
             const cps = classPeriods(), nd = getDays().length;
             const demands = [];
             classes.forEach(c => {
-                matriz.filter(m => m.classIds.includes(c.id)).forEach(m => {
+                matriz.filter(m => m.classIds.includes(c.id) && mActive(m)).forEach(m => {
                     const profs = teachers.filter(t => teacherTeaches(t, m.id, c.id));
                     if (!profs.length) return;
                     const key = `${m.id}_${c.id}`;
@@ -2200,7 +2216,7 @@
                 const aulas = Number(m.aulas); if (!Number.isInteger(aulas) || aulas < 1 || aulas > 15) fail(`aulas semanais inválidas em "${String(m.subject).slice(0, 30)}"`);
                 const fcSlots = (Array.isArray(m.fcSlots) ? m.fcSlots : []).filter(x => { const ok = isObj(x) && typeof x.serie === 'string' && Number.isInteger(x.d) && x.d >= 0 && x.d <= 5 && classPer.has(x.p); if (!ok) dropped++; return ok; }).map(x => ({ serie: sanitize(x.serie), d: x.d, p: x.p }));
                 const ids = (Array.isArray(m.classIds) ? m.classIds : []).filter(id => { const ok = classIds.has(id); if (!ok) dropped++; return ok; });
-                return { id: um(m.id), subject: txt(m.subject, 'Disciplina'), aulas, fc: !!m.fc, classIds: ids, fcSlots };
+                return { id: um(m.id), subject: txt(m.subject, 'Disciplina'), aulas, fc: !!m.fc, periodo: (m.periodo === '1' || m.periodo === '2') ? m.periodo : 'anual', classIds: ids, fcSlots };
             });
             const matMap = new Map(mat.map(m => [m.id, m]));
 
@@ -2313,7 +2329,7 @@
         }
         function pendingList() {
             const out = [];
-            classes.forEach(c => matriz.filter(m => m.classIds.includes(c.id)).forEach(m => {
+            classes.forEach(c => matriz.filter(m => m.classIds.includes(c.id) && mActive(m)).forEach(m => {
                 const hasT = teachers.some(t => teacherTeaches(t, m.id, c.id));
                 const diff = getEffectiveAulas(m.id, c.id) - countClassMatriz(c.id, m.id);
                 if (diff > 0) out.push({ c, m, diff, hasT });
@@ -2339,7 +2355,7 @@
             const nav = (label, fn) => ({ label, go: fn });
             // capacidade
             classes.forEach(c => {
-                const req = matriz.filter(m => m.classIds.includes(c.id)).reduce((sum, m) => sum + getEffectiveAulas(m.id, c.id), 0), av = availableSlots(c);
+                const req = matriz.filter(m => m.classIds.includes(c.id) && mActive(m)).reduce((sum, m) => sum + getEffectiveAulas(m.id, c.id), 0), av = availableSlots(c);
                 if (req > av) items.push({ sev: 1, title: `${c.name}: carga maior que os horários disponíveis`, detail: `Exige ${req} aulas e só existem ${av} horários (${req - av} a mais). Reduza aulas na matriz ou nas cotas.`, actions: [nav('Ir para a Matriz', () => switchTab('matriz'))] });
             });
             // conflitos
@@ -2443,7 +2459,7 @@
             // relatório por turma
             const conflByClass = {}; viol.forEach(v => { conflByClass[v.c.id] = (conflByClass[v.c.id] || 0) + 1; });
             html += `<h3 class="font-bold text-sm text-school-primary mt-6 mb-2">Relatório por turma</h3><div class="overflow-x-auto"><table class="w-full text-left border-collapse text-sm"><thead><tr class="bg-gray-100 text-xs text-gray-600 uppercase border-b"><th class="p-2">Turma</th><th class="p-2">Exigidas</th><th class="p-2">Alocadas</th><th class="p-2">Completa</th><th class="p-2">Conflitos</th></tr></thead><tbody>${classes.map(c => {
-                const mine = matriz.filter(m => m.classIds.includes(c.id) && teachers.some(t => teacherTeaches(t, m.id, c.id)));
+                const mine = matriz.filter(m => m.classIds.includes(c.id) && mActive(m) && teachers.some(t => teacherTeaches(t, m.id, c.id)));
                 const req = mine.reduce((sum, m) => sum + getEffectiveAulas(m.id, c.id), 0), got = Object.keys(sched(c.id)).length, pct = req ? Math.min(100, Math.round(mine.reduce((sum, m) => sum + Math.min(getEffectiveAulas(m.id, c.id), countClassMatriz(c.id, m.id)), 0) / req * 100)) : 100;
                 return `<tr class="border-b"><td class="p-2 font-semibold">${esc(c.name)}</td><td class="p-2">${req}</td><td class="p-2">${got}</td><td class="p-2 ${pct === 100 ? 'text-green-700' : 'text-amber-700'} font-bold">${pct}%</td><td class="p-2 ${conflByClass[c.id] ? 'text-red-600 font-bold' : ''}">${conflByClass[c.id] || 0}</td></tr>`;
             }).join('') || '<tr><td colspan="5" class="p-2 text-gray-400">—</td></tr>'}</tbody></table></div>`;
