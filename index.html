@@ -1764,7 +1764,7 @@
 
         function renderGrid() {
             const head = document.getElementById('gridHead'), tbody = document.getElementById('gridBody'), days = getDays();
-            head.innerHTML = `<tr class="bg-school-primary text-white text-sm uppercase"><th class="p-3 w-20 text-center border-r border-blue-900">Horário</th>${days.map(d => `<th class="p-3 border-r border-blue-900" style="min-width:110px">${d}</th>`).join('')}</tr>`;
+            head.innerHTML = `<tr class="bg-school-primary text-white text-sm uppercase"><th class="p-3 w-20 text-center border-r border-blue-900">Horário</th>${days.map(d => `<th class="p-3 text-center border-r border-blue-900" style="min-width:110px">${d}</th>`).join('')}</tr>`;
             tbody.innerHTML = '';
             
             if (viewMode === 'teacher') {
