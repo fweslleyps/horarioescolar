@@ -701,6 +701,7 @@
         }
 
         // Disciplinas anuais (padrão) ou só do 1º / só do 2º semestre (m.periodo = '1' | '2')
+        function perBadge(m) { return (m && (m.periodo === '1' || m.periodo === '2')) ? ` <span class="inline-block text-[9px] font-bold bg-purple-100 text-purple-800 rounded px-1 py-0.5" title="Disciplina só deste semestre">só ${m.periodo}º sem.</span>` : ''; }
         function mActive(m, s) { const p = m && m.periodo; return !(p === '1' || p === '2') || String(p) === String(s || sem()); }
         function getEffectiveAulas(mid, cid) {
             const m = matriz.find(x => x.id === mid); if (!m) return 0;
@@ -1465,7 +1466,7 @@
                             return `<div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border shadow-sm"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleFormTurma('${m.id}', '${cid}', this.checked)" class="rounded text-school-primary"><span class="text-[11px] font-semibold mr-1">${esc(shortName(c.name))}</span>${isChecked ? `<input type="number" min="1" max="15" placeholder="${m.aulas}a" value="${cargaVal}" oninput="setFormCarga('${m.id}', '${cid}', this.value)" class="w-14 border border-gray-300 rounded text-center text-[11px] py-0.5" title="Qtd. Aulas (Vazio = Total)">` : ''}</div>`;
                         }).join('')}
                     </div>` : '';
-                return `<div class="bg-gray-50 px-2 py-1 rounded border text-xs w-full"><label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" ${on ? 'checked' : ''} onchange="toggleFormMatriz('${m.id}', this.checked)" class="rounded text-school-primary"><span class="font-semibold">${esc(m.subject)}</span>${m.fc ? FC_BADGE : ''}<span class="text-gray-500">· ${m.aulas}a · ${esc(summarizeClasses(m.classIds))}</span></label>${chips}</div>`;
+                return `<div class="bg-gray-50 px-2 py-1 rounded border text-xs w-full"><label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" ${on ? 'checked' : ''} onchange="toggleFormMatriz('${m.id}', this.checked)" class="rounded text-school-primary"><span class="font-semibold">${esc(m.subject)}</span>${perBadge(m)}${m.fc ? FC_BADGE : ''}<span class="text-gray-500">· ${m.aulas}a · ${esc(summarizeClasses(m.classIds))}</span></label>${chips}</div>`;
             }).join('') || '<span class="text-xs text-gray-400">Cadastre disciplinas na Matriz.</span>';
         }
 
@@ -1578,7 +1579,7 @@
                 const subjects = t.matrizIds.map(mid => {
                     const m = matriz.find(x => x.id === mid); if (!m) return '';
                     const own = teacherClasses(t, mid);
-                    return `<div><b>${esc(m.subject)}</b> ${m.fc ? FC_BADGE : ''} <span class="text-xs text-gray-500">${esc(summarizeClasses(own))}</span></div>`;
+                    return `<div><b>${esc(m.subject)}</b>${perBadge(m)} ${m.fc ? FC_BADGE : ''} <span class="text-xs text-gray-500">${esc(summarizeClasses(own))}</span></div>`;
                 }).join('');
                 
                 const allocated = teacherStats(t).slots;
@@ -2796,7 +2797,7 @@
                 if (o.planDay === d) warns.push('é o dia de planejamento dele(a)');
                 const load = teacherDayLoad(o.id, d) + subsList.filter(x => x.sem === sem() && x.date === date && x.coverId === o.id).length;
                 if (load >= (o.maxPerDay || 8)) warns.push(`já teria ${load} aula(s) no dia (limite ${o.maxPerDay || 8})`);
-                const subs = o.matrizIds.filter(mid => teacherTeaches(o, mid, c.id) && matriz.some(x => x.id === mid));
+                const subs = o.matrizIds.filter(mid => teacherTeaches(o, mid, c.id) && matriz.some(x => x.id === mid && mActive(x)));
                 if (!subs.length) return null; // só quem leciona nesta turma
                 subs.sort((a, b) => (b === m.id) - (a === m.id)); // a mesma disciplina da aula vem primeiro
                 return { t: o, rel: subs.includes(m.id) ? 0 : 1, subs, warns, load };
@@ -2882,8 +2883,8 @@
                 if (subsList.some(x => x.sem === sem() && x.date === R.date && x.periodId === r.pid && (x.classId === c2.id || x.classId === r.c.id))) return;
                 if (isAbsentAt(O.id, R.date, r.pid)) return;
                 if (coverBusyBySub(O.id, R.date, r.pid, r.m) || coverBusyBySub(T.id, R.date, r.pid, m2)) return;
-                const subsO = O.matrizIds.filter(mid => teacherTeaches(O, mid, r.c.id) && matriz.some(x => x.id === mid));
-                const subsT = T.matrizIds.filter(mid => teacherTeaches(T, mid, c2.id) && matriz.some(x => x.id === mid));
+                const subsO = O.matrizIds.filter(mid => teacherTeaches(O, mid, r.c.id) && matriz.some(x => x.id === mid && mActive(x)));
+                const subsT = T.matrizIds.filter(mid => teacherTeaches(T, mid, c2.id) && matriz.some(x => x.id === mid && mActive(x)));
                 if (!subsO.length || !subsT.length) return; // cada um precisa lecionar na turma do outro
                 subsO.sort((a, b) => (b === r.m.id) - (a === r.m.id)); subsT.sort((a, b) => (b === m2.id) - (a === m2.id));
                 out.push({ o: O, c2, m2, midO: subsO[0], midT: subsT[0] });
