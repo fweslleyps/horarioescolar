@@ -63,11 +63,14 @@
         .print-page { margin-bottom: 24px; background: #fff; padding: 14px; border: 1px solid #ddd; border-radius: 6px; }
         .print-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; font-size: 13px; }
         .print-only { display: none; }
+        .hbtn { align-items: center; gap: .4rem; height: 2.25rem; padding: 0 .8rem; font-size: .75rem; font-weight: 700; border-radius: .5rem; white-space: nowrap; transition: background .15s; cursor: pointer; }
+        .hbtn:not(.hidden) { display: inline-flex; }
 
         /* Quadro geral por turma (modelo do mural): grade + tabela "Substituição de aulas" */
         .ov-page .print-head { margin-bottom: 4px; }
         .ov-block { margin-bottom: 3mm; page-break-inside: avoid; break-inside: avoid; }
-        .ov-title { text-align: center; font-weight: 800; font-size: 11px; text-transform: uppercase; margin-bottom: 2px; letter-spacing: .2px; }
+        .ov-title { text-align: center; font-weight: 800; font-size: 13px; text-transform: uppercase; margin-bottom: 3px; letter-spacing: .4px; padding: 2px 6px; border: 1.5px solid #000; background: #dbe4ff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .ov-sem-title { text-align: center; font-weight: 800; font-size: 15px; text-transform: uppercase; margin: 2px 0 4px; letter-spacing: .5px; }
         .ptable.ov-t { table-layout: fixed; font-size: 7.5px; line-height: 1.15; }
         .ptable.ov-t th, .ptable.ov-t td { padding: 0 3px; text-align: left; overflow: hidden; white-space: nowrap; text-overflow: clip; }
         .ptable.ov-t th { text-align: left; font-size: 9px; text-transform: uppercase; background: #fff; }
@@ -97,24 +100,25 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <header class="bg-school-primary text-white shadow-md p-4 flex justify-between items-center no-print border-b-4 border-school-accent flex-wrap gap-3">
-        <div class="flex items-center gap-3">
+    <header class="bg-school-primary text-white shadow-md px-4 py-3 flex justify-between items-center no-print border-b-4 border-school-accent gap-3 flex-wrap xl:flex-nowrap">
+        <div class="flex items-center gap-3 min-w-0">
             <img src="https://i.postimg.cc/FRHvXny2/logo-da-escola.png" alt="Logo da Escola" class="w-10 h-10 object-contain bg-white rounded p-1 shadow-sm" onerror="this.style.display='none'">
             <div>
                 <h1 class="text-xl font-bold leading-tight">Gestão de Horários</h1>
                 <p class="text-xs opacity-80">EEEP Prof. Plácido Aderaldo Castelo</p>
             </div>
         </div>
-        <div class="flex items-center gap-3 flex-wrap justify-end">
-            <button onclick="openReader()" class="text-xs font-bold bg-white text-school-primary hover:bg-gray-100 px-3 py-2 rounded-lg transition shadow flex items-center gap-1" title="Visão simples, em lista por dia, ideal para celular">📱 Modo leitura</button>
-            <button onclick="copySemester()" class="text-xs font-bold bg-amber-500 text-amber-950 hover:bg-amber-400 px-3 py-2 rounded-lg transition shadow flex items-center gap-1" title="Copia a grade do 1º Semestre para o 2º, limpando a tarde do estágio.">📋 Copiar 1º para 2º Sem.</button>
+        <div class="flex items-center gap-2 flex-wrap xl:flex-nowrap justify-end">
+            <button onclick="openReader()" class="hbtn bg-white text-school-primary hover:bg-gray-100 shadow" title="Visão simples, em lista por dia, ideal para celular">📱 Modo leitura</button>
+            <button onclick="copySemester()" class="hbtn bg-amber-500 text-amber-950 hover:bg-amber-400 shadow" title="Copia a grade do 1º Semestre para o 2º, limpando a tarde do estágio.">📋 Copiar 1º para 2º Sem.</button>
             <div class="w-px h-6 bg-white bg-opacity-20 mx-1"></div>
-            <button onclick="exportBackup()" class="text-xs font-semibold bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-2 rounded-lg transition" title="Baixar todos os dados em um arquivo JSON">💾 Exportar backup</button>
-            <button onclick="document.getElementById('importFile').click()" class="text-xs font-semibold bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-2 rounded-lg transition" title="Restaurar dados de um arquivo JSON">📂 Importar backup</button>
-            <button onclick="openAbModal()" class="text-xs font-semibold bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-2 rounded-lg transition" title="Versões automáticas e cópia automática em uma pasta">🛡️ Backup automático <span id="abDot"></span></button>
+            <button onclick="openAbModal()" class="hbtn bg-white bg-opacity-20 hover:bg-opacity-30" title="Exportar e importar backup, e versões automáticas">💾 Backup</button>
+            <span id="cloudStatus" class="hbtn hidden bg-white bg-opacity-20"></span>
+            <button onclick="cloudLogout()" class="hbtn bg-white bg-opacity-20 hover:bg-opacity-30" title="Sair desta conta">Sair</button>
+            <div class="w-px h-6 bg-white bg-opacity-20 mx-1"></div>
             <input type="file" id="importFile" accept="application/json,.json" class="hidden" onchange="importBackup(event)">
-            <label class="flex items-center cursor-pointer gap-2 bg-white bg-opacity-20 px-3 py-1.5 rounded-lg transition">
-                <span class="text-sm font-semibold">Modo 2º Semestre (Estágio)</span>
+            <label class="hbtn bg-white bg-opacity-20 cursor-pointer gap-3">
+                <span>Modo 2º Semestre (Estágio)</span>
                 <div class="relative">
                     <input type="checkbox" id="semesterToggle" class="sr-only" onchange="toggleSemester()">
                     <div class="block bg-blue-900 w-10 h-6 rounded-full shadow-inner"></div>
@@ -445,6 +449,19 @@
     </main>
 
     <div id="printContainer" class="print-only"></div>
+    <div id="loginGate" class="fixed inset-0 flex items-center justify-center p-4 bg-school-primary no-print" style="z-index:100">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            <h1 class="text-xl font-bold text-school-primary text-center">Horário Escolar</h1>
+            <p class="text-xs text-gray-500 text-center mb-4">EEEP Prof. Plácido Aderaldo Castelo</p>
+            <form id="lgForm" onsubmit="cloudLogin(event)" class="hidden">
+                <label class="block text-xs font-bold text-gray-700 mb-3">Usuário<input id="lgUser" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm font-normal"></label>
+                <label class="block text-xs font-bold text-gray-700 mb-3">Senha<input id="lgPass" type="password" autocomplete="current-password" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm font-normal"></label>
+                <button id="lgBtn" type="submit" class="w-full bg-school-accent text-white font-bold rounded py-2 text-sm hover:opacity-90 disabled:opacity-50">Entrar</button>
+            </form>
+            <div id="lgLoading" class="text-center text-sm text-gray-600 py-4"><span id="lgLoadingText">Carregando…</span></div>
+            <div id="lgMsg" class="text-xs text-red-600 mt-3 text-center min-h-[1rem]"></div>
+        </div>
+    </div>
     <div id="toast" class="fixed bottom-4 right-4 text-white text-sm px-4 py-2 rounded shadow-lg hidden no-print z-50 transition-all"></div>
     
     <!-- Modo leitura (celular) -->
@@ -463,7 +480,7 @@
         <div class="absolute inset-0 bg-black bg-opacity-40" onclick="closeAbModal()"></div>
         <div class="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
-                <h3 class="font-bold text-lg text-school-primary">Backup automático</h3>
+                <h3 class="font-bold text-lg text-school-primary">Backup</h3>
                 <button onclick="closeAbModal()" class="text-gray-500 hover:text-red-600 font-bold text-xl leading-none">&times;</button>
             </div>
             <div id="abBody" class="p-4 overflow-y-auto flex-1 text-sm"></div>
@@ -520,7 +537,32 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
+    import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore, collection, doc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+    const firebaseConfig = {
+        apiKey: "AIzaSyBL3E-V-Q1qgOUb7UppvaFyRUED0RChIGc",
+        authDomain: "horarioescolarplacido.firebaseapp.com",
+        projectId: "horarioescolarplacido",
+        storageBucket: "horarioescolarplacido.firebasestorage.app",
+        messagingSenderId: "55999444470",
+        appId: "1:55999444470:web:8cce02d8f4097fbc9303d7"
+    };
+    const app = initializeApp(firebaseConfig), auth = getAuth(app);
+    let db; try { db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); } catch (e) { db = getFirestore(app); }
+    // O login é só por "usuário": o sistema acrescenta um e-mail fixo do projeto (ninguém precisa conhecê-lo).
+    const toEmail = u => { u = String(u).trim().toLowerCase().replace(/\s+/g, ''); return u.includes('@') ? u : u + '@' + firebaseConfig.authDomain; };
+    window.fb = {
+        login: (u, p) => signInWithEmailAndPassword(auth, toEmail(u), p),
+        logout: () => signOut(auth),
+        onAuth: cb => onAuthStateChanged(auth, cb),
+        listen: (cb, err) => onSnapshot(collection(db, 'horario'), { includeMetadataChanges: true }, cb, err),
+        save: (name, json, by) => setDoc(doc(db, 'horario', name), { json, by: by || '', updatedAt: serverTimestamp() })
+    };
+    window.dispatchEvent(new Event('fb-ready'));
+</script>
+<script>
         // ================= ESTADO GLOBAL =================
         const SCHEMA_VERSION = 10;
         const DAY_NAMES = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -557,7 +599,7 @@
 
         window.onload = () => {
             loadData();
-            setTimeout(autoBackupInit, 1500);
+            if (window.fb) cloudStart(); else { window.addEventListener('fb-ready', cloudStart, { once: true }); setTimeout(() => { if (!window.fb) { cloudStarted = false; gateShow('form', 'Não foi possível carregar o Firebase. Verifique a internet e recarregue a página.'); } }, 8000); }
             if (!readLS('sys_version') && classes.length === 0) {
                 classes = [{ id: 'C1', name: '1ª Série - A', serie: '1', isEstagio: false }];
                 periods = [
@@ -666,6 +708,7 @@
                 localStorage.setItem('sys_sem', String(sem()));
             } catch (e) { console.error(e); }
             if (typeof autoBackupSoon === 'function') autoBackupSoon();
+            if (typeof cloudSaveSoon === 'function') cloudSaveSoon();
         }
         function readLS(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
         function loadData() {
@@ -738,6 +781,7 @@
         }
 
         function exportBackup(tag) {
+            try { localStorage.setItem('sys_last_export', String(Date.now())); } catch (e) {}
             const data = backupObj();
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `horarios-backup${tag ? '-' + tag : ''}-${new Date().toISOString().slice(0, 10)}.json`; 
@@ -760,6 +804,126 @@
             reader.readAsText(file);
         }
         
+        // ================= NUVEM (Firebase): login por usuário + dados no Firestore =================
+        // Os dados ficam em 4 documentos (estrutura, grade1, grade2, subs) na coleção "horario". O navegador guarda só um cache.
+        const CLOUD_DOCS = ['estrutura', 'grade1', 'grade2', 'subs'];
+        let cloudUser = null, cloudReady = false, cloudUnsub = null, cloudLast = {}, cloudSeen = {}, cloudDirty = false, cloudTimer = null, cloudRunning = false, cloudRerun = false, cloudApplying = false, cloudStarted = false, cloudSessionInit = false;
+        function cloudSplit(o) {
+            const sc = o.schedules || {};
+            return { estrutura: { schemaVersion: o.schemaVersion, classes: o.classes, periods: o.periods, matriz: o.matriz, teachers: o.teachers, settings: o.settings, secondSemester: o.secondSemester }, grade1: sc[1] || {}, grade2: sc[2] || {}, subs: { substitutions: o.substitutions, absences: o.absences } };
+        }
+        function cloudMerge(o, name, p) {
+            if (name === 'estrutura') Object.assign(o, p);
+            else if (name === 'grade1') o.schedules[1] = p;
+            else if (name === 'grade2') o.schedules[2] = p;
+            else if (name === 'subs') { o.substitutions = p.substitutions || []; o.absences = p.absences || []; }
+        }
+        function cloudSetStatus(k) {
+            const el = document.getElementById('cloudStatus'); if (!el) return;
+            const map = { ok: ['☁️ Salvo', 'Tudo salvo na nuvem'], saving: ['⏳ Salvando…', 'Enviando alterações para a nuvem'], err: ['⚠ Não salvou', 'Falha ao salvar; o sistema tenta de novo sozinho. Verifique a conexão.'], off: ['📴 Sem conexão', 'Sem conexão: as alterações serão enviadas quando voltar.'] };
+            const m = map[k] || map.ok; el.textContent = `👤 ${cloudUser || ''} · ${m[0]}`; el.title = m[1]; el.classList.remove('hidden');
+        }
+        function gateShow(mode, msg) {
+            const g = document.getElementById('loginGate'); if (!g) return;
+            g.classList.toggle('hidden', mode === 'hidden');
+            document.getElementById('lgForm').classList.toggle('hidden', mode !== 'form');
+            document.getElementById('lgLoading').classList.toggle('hidden', mode !== 'loading');
+            document.getElementById('lgMsg').textContent = msg || '';
+            document.getElementById('lgBtn').disabled = false;
+            if (mode === 'loading') document.getElementById('lgLoadingText').textContent = msg || 'Carregando dados…';
+            if (mode === 'form') { document.getElementById('lgMsg').textContent = msg || ''; const u = document.getElementById('lgUser'); if (!u.value) u.focus(); }
+        }
+        async function cloudLogin(ev) {
+            ev.preventDefault();
+            const u = document.getElementById('lgUser').value, p = document.getElementById('lgPass').value;
+            if (!u.trim() || !p) return gateShow('form', 'Informe o usuário e a senha.');
+            document.getElementById('lgBtn').disabled = true; document.getElementById('lgMsg').textContent = 'Entrando…';
+            try { await window.fb.login(u, p); }
+            catch (e) {
+                const c = (e && e.code) || '';
+                const msg = /invalid-credential|wrong-password|user-not-found|invalid-email/.test(c) ? 'Usuário ou senha incorretos.' : c.includes('too-many') ? 'Muitas tentativas. Aguarde alguns minutos.' : c.includes('network') ? 'Sem conexão com a internet.' : c.includes('user-disabled') ? 'Este usuário está desativado.' : 'Não foi possível entrar (' + (c || 'erro') + ').';
+                gateShow('form', msg); document.getElementById('lgPass').value = '';
+            }
+        }
+        function cloudLogout() {
+            if (cloudDirty && !confirm('Há alterações ainda sendo enviadas. Sair mesmo assim?')) return;
+            try { Object.keys(localStorage).filter(k => k.startsWith('sys_')).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+            window.fb.logout().finally(() => location.reload());
+        }
+        function cloudStart() {
+            if (cloudStarted) return; cloudStarted = true;
+            if (!window.fb) { cloudStarted = false; return gateShow('form', 'Não foi possível carregar o Firebase. Verifique a internet e recarregue a página.'); }
+            gateShow('form', '');
+            window.fb.onAuth(user => {
+                if (cloudUnsub) { try { cloudUnsub(); } catch (e) {} cloudUnsub = null; }
+                cloudReady = false; cloudLast = {}; cloudSeen = {};
+                if (!user) { cloudUser = null; document.getElementById('cloudStatus').classList.add('hidden'); return gateShow('form', ''); }
+                cloudUser = (user.email || '').split('@')[0];
+                gateShow('loading', 'Carregando dados…');
+                cloudUnsub = window.fb.listen(cloudOnSnap, err => {
+                    const c = (err && err.code) || '';
+                    gateShow('form', c.includes('permission') ? 'Sem permissão para acessar os dados. Confira as regras do Firestore.' : 'Erro ao carregar os dados (' + (c || 'erro') + ').');
+                });
+            });
+        }
+        function cloudHasLocalData() { return classes.length > 1 || teachers.length > 1 || Object.values(schedules || {}).some(sm => Object.values(sm || {}).some(c => Object.keys(c || {}).length)); }
+        function cloudEnter() {
+            cloudReady = true; gateShow('hidden'); cloudSetStatus('ok');
+            if (!cloudSessionInit) { cloudSessionInit = true; setTimeout(autoBackupInit, 1500); }
+        }
+        function cloudOnSnap(snap) {
+            const docs = {}; snap.forEach(d => { const j = (d.data() || {}).json; if (typeof j === 'string') docs[d.id] = { json: j, pending: d.metadata.hasPendingWrites }; });
+            if (!cloudReady) {
+                if (!CLOUD_DOCS.some(n => docs[n])) {
+                    if (snap.metadata.fromCache) return; // ainda não ouvimos o servidor
+                    if (cloudHasLocalData()) {
+                        if (confirm(`A nuvem ainda está vazia.\n\nEnviar para a nuvem os dados deste navegador?\n${abSummary(backupObj())}`)) { cloudEnter(); cloudSaveSoon(); }
+                        else { window.fb.logout(); }
+                    } else { cloudEnter(); toast('A nuvem está vazia. Use "📂 Importar backup" para enviar seus dados.', 'warn'); }
+                    return;
+                }
+                cloudApplyDocs(docs, true); cloudEnter(); return;
+            }
+            if (cloudDirty || cloudRunning) return; // alterações locais ainda não enviadas: elas prevalecem
+            cloudApplyDocs(docs, false);
+        }
+        function cloudApplyDocs(docs, first) {
+            const changed = CLOUD_DOCS.filter(n => docs[n] && !docs[n].pending && docs[n].json !== cloudSeen[n]);
+            if (!changed.length) { if (snapNoteOffline()) {} return; }
+            const o = backupObj(); o.schedules = { 1: (o.schedules || {})[1] || {}, 2: (o.schedules || {})[2] || {} };
+            try { changed.forEach(n => cloudMerge(o, n, JSON.parse(docs[n].json))); } catch (e) { return toast('Dados da nuvem ilegíveis em "' + changed.join(', ') + '".', 'warn'); }
+            let v; try { v = validateBackup(JSON.parse(JSON.stringify(o))); } catch (e) { return toast('Dados da nuvem recusados: ' + e.message, 'warn'); }
+            cloudApplying = true; try { applyBackup(v, true); } finally { cloudApplying = false; }
+            changed.forEach(n => { cloudSeen[n] = docs[n].json; cloudLast[n] = docs[n].json; });
+            if (!first) toast('Dados atualizados por outro usuário.', 'ok');
+        }
+        function snapNoteOffline() { return false; }
+        function cloudSaveSoon() {
+            if (!cloudReady || cloudApplying || !cloudUser) return;
+            cloudDirty = true; cloudSetStatus('saving');
+            clearTimeout(cloudTimer); cloudTimer = setTimeout(cloudSaveRun, 1200);
+        }
+        async function cloudSaveRun() {
+            if (cloudRunning) { cloudRerun = true; return; }
+            cloudRunning = true; cloudDirty = false; let ok = true;
+            try {
+                const parts = cloudSplit(backupObj());
+                for (const n of CLOUD_DOCS) {
+                    const str = JSON.stringify(parts[n]);
+                    if (str === cloudLast[n]) continue;
+                    if (str.length > 900000) { toast(`"${n}" ficou grande demais para a nuvem (limite ~1 MB). Exporte um backup e avise o suporte.`, 'warn'); ok = false; continue; }
+                    const prev = cloudLast[n]; cloudLast[n] = str; cloudSeen[n] = str;
+                    try { await window.fb.save(n, str, cloudUser); } catch (e) { cloudLast[n] = prev; cloudSeen[n] = prev; ok = false; console.error(e); }
+                }
+            } finally { cloudRunning = false; }
+            if (cloudRerun || cloudDirty) { cloudRerun = false; return cloudSaveRun(); }
+            cloudSetStatus(ok ? (navigator.onLine ? 'ok' : 'off') : 'err');
+            if (!ok) { clearTimeout(cloudTimer); cloudTimer = setTimeout(() => { cloudDirty = true; cloudSaveRun(); }, 15000); }
+        }
+        window.addEventListener('beforeunload', e => { if (cloudDirty || cloudRunning) { e.preventDefault(); e.returnValue = ''; } });
+        window.addEventListener('online', () => { if (cloudReady) cloudSaveSoon(); });
+        window.addEventListener('offline', () => { if (cloudReady) cloudSetStatus('off'); });
+
         // ================= BACKUP AUTOMÁTICO =================
         // 1) Versões automáticas guardadas no navegador (IndexedDB), protegem contra erros de edição.
         // 2) Cópia automática numa pasta do computador (Chrome/Edge), protege também contra limpeza dos dados do navegador.
@@ -778,12 +942,12 @@
             }));
         }
         const AB_KEEP = 20, AB_EVERY = 10 * 60 * 1000;
-        let abTimer = null, abLastTs = 0, abLastStr = '', abDir = null, abFolderOk = false, abFolderLast = 0, abErr = '';
+        let abTimer = null, abLastTs = 0, abLastStr = '', abErr = '';
         function abSummary(o) {
             const aulas = Object.values(o.schedules || {}).reduce((n, sm) => n + Object.values(sm || {}).reduce((k, c) => k + Object.keys(c || {}).length, 0), 0);
             return `${(o.classes || []).length} turma(s) · ${(o.teachers || []).length} professor(es) · ${aulas} aula(s) alocada(s) · ${(o.substitutions || []).length} substituição(ões)`;
         }
-        async function abSnapSave(str, force) {
+        async function abSnapSave(str) {
             const o = JSON.parse(str), ts = Date.now();
             await idbRun('snaps', 'readwrite', s => s.put({ ts, data: str, sum: abSummary(o) }));
             const all = await idbRun('snaps', 'readonly', s => s.getAllKeys());
@@ -795,8 +959,6 @@
         async function autoBackupRun() {
             let str; try { str = JSON.stringify(backupObj()); } catch (e) { return; }
             try { if (str !== abLastStr && Date.now() - abLastTs >= AB_EVERY) await abSnapSave(str); abErr = ''; } catch (e) { abErr = 'Não foi possível guardar versões neste navegador.'; }
-            if (abDir) await abFolderWrite(str);
-            abUpdateDot();
         }
         async function autoBackupInit() {
             try {
@@ -806,60 +968,17 @@
                 const str = JSON.stringify(backupObj());
                 if (str !== abLastStr) { await abSnapSave(str); }
             } catch (e) { abErr = 'Versões automáticas indisponíveis neste navegador.'; }
-            if (window.showDirectoryPicker) {
-                try { abDir = await idbRun('kv', 'readonly', s => s.get('dir')) || null; } catch (e) { abDir = null; }
-                if (abDir) { try { abFolderOk = (await abDir.queryPermission({ mode: 'readwrite' })) === 'granted'; } catch (e) { abFolderOk = false; } if (abFolderOk) abFolderWrite(JSON.stringify(backupObj())); }
-            }
-            abUpdateDot();
         }
-        const abDay = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; };
-        async function abFolderWrite(str) {
-            if (!abDir) return false;
-            try {
-                if (!abFolderOk) { abFolderOk = (await abDir.queryPermission({ mode: 'readwrite' })) === 'granted'; if (!abFolderOk) return false; }
-                for (const name of ['horarios-backup-auto.json', `horarios-${abDay()}.json`]) {
-                    const fh = await abDir.getFileHandle(name, { create: true }), w = await fh.createWritable(); await w.write(str); await w.close();
-                }
-                const days = []; for await (const [n] of abDir.entries()) if (/^horarios-\d{4}-\d{2}-\d{2}\.json$/.test(n)) days.push(n);
-                days.sort().reverse().slice(30).forEach(n => abDir.removeEntry(n).catch(() => {}));
-                abFolderLast = Date.now(); abErr = ''; return true;
-            } catch (e) { abFolderOk = false; abErr = 'Falha ao gravar na pasta: ' + (e && e.message ? e.message : e); return false; }
-        }
-        async function abPickFolder() {
-            try {
-                const h = await window.showDirectoryPicker({ mode: 'readwrite' });
-                abDir = h; abFolderOk = true; await idbRun('kv', 'readwrite', s => s.put(h, 'dir'));
-                await abFolderWrite(JSON.stringify(backupObj())); toast('Backup automático na pasta ativado.', 'ok');
-            } catch (e) { if (e && e.name !== 'AbortError') toast('Não foi possível usar essa pasta.', 'warn'); }
-            renderAbModal(); abUpdateDot();
-        }
-        async function abReactivate() {
-            try { abFolderOk = (await abDir.requestPermission({ mode: 'readwrite' })) === 'granted'; if (abFolderOk) await abFolderWrite(JSON.stringify(backupObj())); } catch (e) { abFolderOk = false; }
-            renderAbModal(); abUpdateDot();
-        }
-        async function abStopFolder() { abDir = null; abFolderOk = false; try { await idbRun('kv', 'readwrite', s => s.delete('dir')); } catch (e) {} renderAbModal(); abUpdateDot(); }
-        async function abWriteNow() { const ok = await abFolderWrite(JSON.stringify(backupObj())); toast(ok ? 'Backup gravado na pasta.' : 'Não foi possível gravar (reative a pasta).', ok ? 'ok' : 'warn'); renderAbModal(); abUpdateDot(); }
         async function abSnapNow() { try { await abSnapSave(JSON.stringify(backupObj())); toast('Versão guardada.', 'ok'); } catch (e) { toast('Não foi possível guardar a versão.', 'warn'); } renderAbModal(); }
-        function abUpdateDot() {
-            const d = document.getElementById('abDot'); if (!d) return;
-            d.textContent = abDir ? (abFolderOk ? '🟢' : '🟠') : '';
-            d.title = abDir ? (abFolderOk ? 'Pasta de backup ativa' : 'Pasta de backup precisa ser reativada') : '';
-        }
         function openAbModal() { document.getElementById('abModal').classList.remove('hidden'); renderAbModal(); }
         function closeAbModal() { document.getElementById('abModal').classList.add('hidden'); }
         async function renderAbModal() {
             const body = document.getElementById('abBody'); if (!body) return;
             const fmt = ts => new Date(ts).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
             let snaps = []; try { snaps = (await idbRun('snaps', 'readonly', s => s.getAll())).sort((a, b) => b.ts - a.ts); } catch (e) {}
-            let h = '<div class="border rounded-lg p-3 mb-4"><b class="text-school-primary text-sm">📁 Cópia automática numa pasta do computador</b>';
-            if (!window.showDirectoryPicker) h += '<p class="text-xs text-gray-500 mt-1">Este navegador não permite gravar em pasta. Use o Chrome ou o Edge no computador. Enquanto isso, use "💾 Exportar backup" de vez em quando.</p>';
-            else {
-                h += `<p class="text-xs text-gray-600 mt-1">Escolha uma pasta (de preferência no Google Drive/OneDrive ou num pendrive). A cada alteração o sistema grava lá <b>horarios-backup-auto.json</b> (sempre o mais recente) e um arquivo por dia (<b>horarios-AAAA-MM-DD.json</b>, guarda os últimos 30 dias). Esses arquivos servem em "Importar backup".</p>`;
-                if (!abDir) h += '<button onclick="abPickFolder()" class="mt-2 text-xs font-bold bg-school-accent text-white rounded px-3 py-2">Escolher pasta</button>';
-                else h += `<p class="text-xs mt-2">${abFolderOk ? '🟢 <b>Ativo.</b>' : '🟠 <b>Precisa ser reativado</b> (o navegador pede permissão de novo a cada vez que abre).'}${abFolderLast ? ' Última gravação: ' + esc(fmt(abFolderLast)) + '.' : ''}</p><div class="mt-2 flex gap-2 flex-wrap">${abFolderOk ? '<button onclick="abWriteNow()" class="text-xs font-bold bg-white border border-gray-300 rounded px-3 py-1 hover:bg-gray-50">Gravar agora</button>' : '<button onclick="abReactivate()" class="text-xs font-bold bg-school-accent text-white rounded px-3 py-1">Reativar</button>'}<button onclick="abPickFolder()" class="text-xs font-bold bg-white border border-gray-300 rounded px-3 py-1 hover:bg-gray-50">Trocar pasta</button><button onclick="abStopFolder()" class="text-xs font-bold text-red-600 underline px-2">Desativar</button></div>`;
-            }
+            let h = '<div class="border rounded-lg p-3 mb-4"><b class="text-school-primary text-sm">📄 Arquivo de backup</b><p class="text-xs text-gray-600 mt-1">Uma cópia sua, guardada fora da nuvem. Exporte de vez em quando, principalmente antes de mudanças grandes (como a virada de semestre). Importar <b>substitui os dados atuais</b> e passa a valer para todos os usuários.</p><div class="mt-2 flex gap-2 flex-wrap"><button onclick="exportBackup()" class="text-xs font-bold bg-school-accent text-white rounded px-3 py-2">💾 Exportar backup</button><button onclick="closeAbModal(); document.getElementById(\'importFile\').click()" class="text-xs font-bold bg-white border border-gray-300 rounded px-3 py-2 hover:bg-gray-50">📂 Importar backup</button></div></div>';
+            h += '<div class="border rounded-lg p-3"><div class="flex justify-between items-center flex-wrap gap-2"><b class="text-school-primary text-sm">🕘 Versões automáticas (neste computador)</b><button onclick="abSnapNow()" class="text-xs font-bold bg-white border border-gray-300 rounded px-3 py-1 hover:bg-gray-50">Guardar versão agora</button></div><p class="text-xs text-gray-600 mt-1">O sistema guarda uma versão ao abrir e depois a cada 10 minutos de edição (últimas ' + AB_KEEP + '). Servem para <b>desfazer um erro</b>: a nuvem copia tudo, inclusive enganos, e estas versões permitem voltar. Ficam só neste computador e navegador.</p>';
             if (abErr) h += `<p class="text-xs text-red-600 mt-2">${esc(abErr)}</p>`;
-            h += '</div><div class="border rounded-lg p-3"><div class="flex justify-between items-center flex-wrap gap-2"><b class="text-school-primary text-sm">🕘 Versões automáticas (neste navegador)</b><button onclick="abSnapNow()" class="text-xs font-bold bg-white border border-gray-300 rounded px-3 py-1 hover:bg-gray-50">Guardar versão agora</button></div><p class="text-xs text-gray-600 mt-1">O sistema guarda uma versão ao abrir e depois a cada 10 minutos de edição (últimas ' + AB_KEEP + '). Boas para desfazer um erro. <b>Não protegem</b> se os dados do navegador forem apagados: para isso use a pasta acima ou exporte o backup.</p>';
             h += snaps.length ? '<div class="mt-2">' + snaps.map(s => `<div class="text-xs border-b py-1.5 flex justify-between gap-2 items-center"><span><b>${esc(fmt(s.ts))}</b> · ${esc(s.sum)}</span><button onclick="abRestore(${s.ts})" class="font-bold bg-white border border-gray-300 rounded px-2 py-1 hover:bg-gray-50 whitespace-nowrap">Restaurar</button></div>`).join('') + '</div>' : '<p class="text-xs text-gray-400 mt-2">Nenhuma versão guardada ainda.</p>';
             body.innerHTML = h + '</div>';
         }
@@ -867,16 +986,16 @@
             let rec; try { rec = await idbRun('snaps', 'readonly', s => s.get(ts)); } catch (e) {}
             if (!rec) return toast('Versão não encontrada.', 'warn');
             let v; try { v = validateBackup(JSON.parse(rec.data)); } catch (e) { return alert('Versão inválida: ' + e.message + '\n\nNada foi alterado.'); }
-            if (!confirm(`Restaurar a versão de ${new Date(ts).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}?\n${abSummary(JSON.parse(rec.data))}\n\nOs dados atuais serão substituídos (uma versão do estado atual é guardada antes, para você poder voltar).`)) return;
+            if (!confirm(`Restaurar a versão de ${new Date(ts).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}?\n${abSummary(JSON.parse(rec.data))}\n\nOs dados atuais serão substituídos para todos os usuários (uma versão do estado atual é guardada antes, para você poder voltar).`)) return;
             try { await abSnapSave(JSON.stringify(backupObj())); } catch (e) {}
             applyBackup(v); closeAbModal();
         }
-        function applyBackup(v) {
+        function applyBackup(v, silent) {
             classes = v.classes; periods = v.periods; matriz = v.matriz; teachers = v.teachers; schedules = v.schedules;
             settings = v.settings; isSecondSemester = v.secondSemester; subsList = v.substitutions; absList = v.absences || [];
             history = []; future = []; normalizeState(); saveData();
             document.getElementById('semesterToggle').checked = isSecondSemester; document.getElementById('settingSaturday').checked = settings.saturday; renderAll();
-            toast('Backup restaurado com sucesso!' + (v.dropped ? `\n${v.dropped} item(ns) inconsistente(s) ignorado(s).` : ''), v.dropped ? 'warn' : 'ok');
+            if (!silent) toast('Backup restaurado com sucesso!' + (v.dropped ? `\n${v.dropped} item(ns) inconsistente(s) ignorado(s).` : ''), v.dropped ? 'warn' : 'ok');
         }
 
         function copySemester() {
@@ -2066,8 +2185,8 @@
             const subs = (Array.isArray(d.substitutions) ? d.substitutions.slice(0, 5000) : []).filter(x => {
                 const ok = isObj(x) && typeof x.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && (x.sem === 1 || x.sem === 2) && classIds.has(x.classId) && classPer.has(x.periodId) && matMap.has(x.mId) && tIds.has(x.absentId) && tIds.has(x.coverId);
                 if (!ok) dropped++; return ok;
-            }).map((x, i) => ({ id: 'S' + i + '-' + Date.now(), date: x.date, sem: x.sem, classId: x.classId, periodId: x.periodId, mId: x.mId, absentId: x.absentId, coverId: x.coverId, coverMId: (typeof x.coverMId === 'string' && matMap.has(x.coverMId)) ? x.coverMId : undefined }));
-            const abss = (Array.isArray(d.absences) ? d.absences.slice(0, 5000) : []).filter(x => isObj(x) && typeof x.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && (x.sem === 1 || x.sem === 2) && tIds.has(x.teacherId) && Array.isArray(x.periodIds)).map((x, i) => ({ id: 'A' + i + '-' + Date.now(), date: x.date, sem: x.sem, teacherId: x.teacherId, all: x.all !== false, periodIds: x.periodIds.filter(p => classPer.has(p)) }));
+            }).map((x, i) => ({ id: (typeof x.id === 'string' && x.id && x.id.length <= 60) ? x.id : 'S' + i + '-' + Date.now(), date: x.date, sem: x.sem, classId: x.classId, periodId: x.periodId, mId: x.mId, absentId: x.absentId, coverId: x.coverId, coverMId: (typeof x.coverMId === 'string' && matMap.has(x.coverMId)) ? x.coverMId : undefined, swapId: typeof x.swapId === 'string' ? x.swapId.slice(0, 60) : undefined }));
+            const abss = (Array.isArray(d.absences) ? d.absences.slice(0, 5000) : []).filter(x => isObj(x) && typeof x.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && (x.sem === 1 || x.sem === 2) && tIds.has(x.teacherId) && Array.isArray(x.periodIds)).map((x, i) => ({ id: (typeof x.id === 'string' && x.id && x.id.length <= 60) ? x.id : 'A' + i + '-' + Date.now(), date: x.date, sem: x.sem, teacherId: x.teacherId, all: x.all !== false, cession: !!x.cession, periodIds: x.periodIds.filter(p => classPer.has(p)) }));
             return { classes: cls, periods: per, matriz: mat, teachers: tch, schedules: sch, substitutions: subs, absences: abss, settings: { saturday: !!(isObj(d.settings) && d.settings.saturday) }, secondSemester: !!d.secondSemester, dropped };
         }
 
@@ -2512,7 +2631,7 @@
                 return h + '</tbody></table></div>';
             };
             const PER_PAGE = 3; let out = '';
-            for (let i = 0; i < classes.length; i += PER_PAGE) out += `<div class="print-page ov-page">${pageHead('Horário escolar — quadro geral')}${classes.slice(i, i + PER_PAGE).map(block).join('')}</div>`;
+            for (let i = 0; i < classes.length; i += PER_PAGE) out += `<div class="print-page ov-page">${pageHead('Quadro geral')}<div class="ov-sem-title">Horário escolar ${sem()}º semestre ${base ? base.getFullYear() : new Date().getFullYear()}</div>${classes.slice(i, i + PER_PAGE).map(block).join('')}</div>`;
             return out;
         }
 
@@ -2561,7 +2680,7 @@
             document.getElementById('subDateWrap').classList.toggle('hidden', !cover);
             document.getElementById('subCoverAllBtn').classList.toggle('hidden', !cover);
             document.getElementById('subNote').textContent = cover
-                ? 'Só vale para a data escolhida: a grade NÃO é alterada. Mostra quem está livre em cada horário (professores da própria turma, sem aula e sem folga) e guarda o registro da substituição para consulta e impressão.'
+                ? 'Só vale para a data escolhida: a grade NÃO é alterada. Para trocar aulas entre professores sem falta, use "Ceder aulas". Mostra quem está livre em cada horário (professores da própria turma, sem aula e sem folga) e guarda o registro da substituição para consulta e impressão.'
                 : 'A troca altera a grade do semestre aberto (não é só por um dia) e pode ser desfeita com Ctrl+Z. Só aparecem professores que lecionam aquela disciplina para a turma.';
             renderSubstitute();
         }
@@ -2580,7 +2699,7 @@
             return a;
         }
         function absCtx() { return { tid: document.getElementById('subTeacher').value, date: document.getElementById('subDate').value }; }
-        function absMark() { const c = absCtx(); if (!parseDateStr(c.date)) return; absEnsure(c.tid, c.date); saveData(); renderCover(); }
+        function absMark(cession) { const c = absCtx(); if (!parseDateStr(c.date)) return; const a = absEnsure(c.tid, c.date); if (cession) { a.all = false; a.periodIds = []; a.cession = true; } saveData(); renderCover(); }
         function absScope(all) { const c = absCtx(), a = absFind(c.tid, c.date); if (!a) return; a.all = !!all; saveData(); renderCover(); }
         function absTogglePeriod(pid, on) {
             const c = absCtx(), a = absFind(c.tid, c.date); if (!a) return;
@@ -2625,11 +2744,115 @@
             rows.sort((a, b) => pidIdx(a.pid) - pidIdx(b.pid) || a.c.name.localeCompare(b.c.name));
             return { rows, date, d, tid, dt, abs, teachingPids };
         }
+
+
+        // ---- Troca recíproca: A cede a aula p ao professor B e B cede a aula q (do mesmo dia) para A, de uma vez ----
+        let swapDate2 = ''; // vazio = devolução no mesmo dia; preenchido = o colega devolve outra aula nessa data
+        function setSwapDate(v) { swapDate2 = v || ''; renderCover(); }
+        function swapOptions(r, R) {
+            const out = [], T = teachers.find(t => t.id === R.tid); if (!T) return out;
+            const other = !!swapDate2 && swapDate2 !== R.date;
+            let date2 = R.date, d2 = R.d;
+            if (other) { const dt2 = parseDateStr(swapDate2); if (!dt2) return out; d2 = (dt2.getDay() + 6) % 7; if (d2 >= getDays().length) return out; date2 = swapDate2; }
+            r.cands.forEach(cd => {
+                const O = cd.t;
+                classes.forEach(c2 => Object.entries(sched(c2.id)).forEach(([k, cell]) => {
+                    if (cell.t !== O.id || keyDay(k) !== d2) return;
+                    const q = keyPeriod(k); if (!other && q === r.pid) return;
+                    const m2 = matriz.find(x => x.id === cell.m); if (!m2) return;
+                    if (subsList.some(x => x.sem === sem() && x.date === date2 && x.classId === c2.id && x.periodId === q)) return;
+                    if (isAbsentAt(O.id, date2, q)) return;
+                    const back = coverCandidates(c2, m2, d2, q, date2, O.id).find(x => x.t.id === T.id);
+                    if (!back) return;
+                    out.push({ o: O, mid: cd.subs[0], q, c2, m2, mid2: back.subs[0], date2, d2, warns: [...cd.warns, ...back.warns], rel: cd.rel + back.rel });
+                }));
+            });
+            out.sort((a, b) => a.rel - b.rel || (a.c2.id === r.c.id ? 0 : 1) - (b.c2.id === r.c.id ? 0 : 1) || a.warns.length - b.warns.length);
+            return out.slice(0, 12);
+        }
+        function swapHtml(r, i) {
+            const other = !!swapDate2 && swapDate2 !== coverCache.date, cession = !!(coverCache.abs && coverCache.abs.cession);
+            if (!r.swaps || !r.swaps.length) return (other && cession) ? `<div class="mt-1 text-[11px] text-gray-500">Nenhuma troca possível com devolução em ${esc(fmtDate(swapDate2))} (o colega precisa ter aula nesse dia e você precisa estar livre nesse horário).</div>` : '';
+            const dd = v => fmtDate(v).slice(0, 5);
+            return `<div class="mt-1 text-[11px] text-indigo-800 font-bold">⇄ Trocar${other ? ` — o colega devolve outra aula em ${esc(fmtDate(swapDate2))}` : ' no mesmo dia'} (registra os dois lados de uma vez):</div>` + r.swaps.map((sw, n) => {
+                const pq = getPeriod(sw.q), me = (teachers.find(t => t.id === coverCache.tid) || {}).name || '';
+                return `<button onclick="coverSwap(${i}, ${n})" title="${esc(`${sw.o.name} fica com esta aula (${fmtDate(coverCache.date)}) e ${me} fica com ${sw.m2.subject} da ${className(sw.c2.id)} (${pq ? pq.label : ''}, ${fmtDate(sw.date2)})` + (sw.warns.length ? ' • ⚠ ' + sw.warns.join(' • ') : ''))}" class="text-[11px] font-bold border rounded px-2 py-1 mr-1 mb-1 border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100">${esc(shortTeacher(sw.o))} ⇄ ${other ? esc(dd(sw.date2)) + ' ' : ''}${esc(pq ? pq.label : '')} · ${esc(shortName(className(sw.c2.id)))}${sw.warns.length ? ' ⚠' : ''}</button>`;
+            }).join('');
+        }
+        function coverSwap(i, n) {
+            const r = coverCache.rows[i], R = coverCache; if (!r || r.existing) return;
+            const want = (r.swaps || [])[n]; if (!want) return;
+            const fresh = swapOptions(r, R).find(x => x.o.id === want.o.id && x.q === want.q && x.c2.id === want.c2.id && x.date2 === want.date2);
+            if (!fresh) { toast('Essa troca já não é possível (algo mudou). Atualizei a lista.', 'warn'); return renderCover(); }
+            const mk = () => 'S' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), sid = 'W' + mk();
+            subsList.push({ id: mk(), date: R.date, sem: sem(), classId: r.c.id, periodId: r.pid, mId: r.m.id, coverMId: fresh.mid, absentId: R.tid, coverId: fresh.o.id, swapId: sid });
+            subsList.push({ id: mk(), date: fresh.date2, sem: sem(), classId: fresh.c2.id, periodId: fresh.q, mId: fresh.m2.id, coverMId: fresh.mid2, absentId: fresh.o.id, coverId: R.tid, swapId: sid });
+            let ab = absFind(fresh.o.id, fresh.date2);
+            if (!ab) { ab = absEnsure(fresh.o.id, fresh.date2); ab.all = false; ab.periodIds = []; ab.cession = true; }
+            if (!ab.all && !ab.periodIds.includes(fresh.q)) ab.periodIds.push(fresh.q);
+            saveData(); renderCover();
+            const Tn = (teachers.find(t => t.id === R.tid) || {}).name, pq = getPeriod(fresh.q);
+            toast(fresh.date2 === R.date ? `Troca registrada em ${fmtDate(R.date)}: ${Tn} ⇄ ${fresh.o.name}. A grade não foi alterada.` : `Troca registrada: ${fresh.o.name} dá a aula de ${fmtDate(R.date)} e ${Tn} dá a aula de ${fmtDate(fresh.date2)} (${pq ? pq.label : ''}, ${fresh.c2.name}). A grade não foi alterada.`, 'ok');
+        }
+
+        // ---- Troca de turmas no mesmo horário: A (em 1A) e B (em 1B) na mesma aula => A vai para 1B e B para 1A ----
+        function swapClassOptions(r, R) {
+            const out = [], T = teachers.find(t => t.id === R.tid); if (!T || r.m.fc) return out;
+            const key = cellKey(R.d, r.pid);
+            classes.forEach(c2 => {
+                if (c2.id === r.c.id) return;
+                const cell = sched(c2.id)[key]; if (!cell || cell.t === T.id) return;
+                const m2 = matriz.find(x => x.id === cell.m), O = teachers.find(t => t.id === cell.t); if (!m2 || m2.fc || !O) return;
+                if (subsList.some(x => x.sem === sem() && x.date === R.date && x.periodId === r.pid && (x.classId === c2.id || x.classId === r.c.id))) return;
+                if (isAbsentAt(O.id, R.date, r.pid)) return;
+                if (coverBusyBySub(O.id, R.date, r.pid, r.m) || coverBusyBySub(T.id, R.date, r.pid, m2)) return;
+                const subsO = O.matrizIds.filter(mid => teacherTeaches(O, mid, r.c.id) && matriz.some(x => x.id === mid));
+                const subsT = T.matrizIds.filter(mid => teacherTeaches(T, mid, c2.id) && matriz.some(x => x.id === mid));
+                if (!subsO.length || !subsT.length) return; // cada um precisa lecionar na turma do outro
+                subsO.sort((a, b) => (b === r.m.id) - (a === r.m.id)); subsT.sort((a, b) => (b === m2.id) - (a === m2.id));
+                out.push({ o: O, c2, m2, midO: subsO[0], midT: subsT[0] });
+            });
+            return out.slice(0, 10);
+        }
+        function swapClassHtml(r, i) {
+            if (!r.swapC || !r.swapC.length) return '';
+            const T = teachers.find(t => t.id === coverCache.tid), sm = id => (matriz.find(x => x.id === id) || {}).subject || '';
+            return `<div class="mt-1 text-[11px] text-indigo-800 font-bold">🔄 Trocar de turma neste mesmo horário:</div>` + r.swapC.map((sw, n) =>
+                `<button onclick="coverSwapClass(${i}, ${n})" title="${esc(`${T ? T.name : ''} vai para ${sw.c2.name} (${sm(sw.midT)}) e ${sw.o.name} vem para ${r.c.name} (${sm(sw.midO)})`)}" class="text-[11px] font-bold border rounded px-2 py-1 mr-1 mb-1 border-fuchsia-300 bg-fuchsia-50 text-fuchsia-800 hover:bg-fuchsia-100">${esc(shortTeacher(sw.o))} ⇄ ${esc(shortName(sw.c2.name))} · ${esc(sm(sw.midO))}</button>`).join('');
+        }
+        function coverSwapClass(i, n) {
+            const r = coverCache.rows[i], R = coverCache; if (!r || r.existing) return;
+            const want = (r.swapC || [])[n]; if (!want) return;
+            const fresh = swapClassOptions(r, R).find(x => x.o.id === want.o.id && x.c2.id === want.c2.id);
+            if (!fresh) { toast('Essa troca já não é possível (algo mudou). Atualizei a lista.', 'warn'); return renderCover(); }
+            const mk = () => 'S' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            const sid = 'W' + mk();
+            subsList.push({ id: mk(), date: R.date, sem: sem(), classId: r.c.id, periodId: r.pid, mId: r.m.id, coverMId: fresh.midO, absentId: R.tid, coverId: fresh.o.id, swapId: sid });
+            subsList.push({ id: mk(), date: R.date, sem: sem(), classId: fresh.c2.id, periodId: r.pid, mId: fresh.m2.id, coverMId: fresh.midT, absentId: fresh.o.id, coverId: R.tid, swapId: sid });
+            let ab = absFind(fresh.o.id, R.date);
+            if (!ab) { ab = absEnsure(fresh.o.id, R.date); ab.all = false; ab.periodIds = []; ab.cession = true; }
+            if (!ab.all && !ab.periodIds.includes(r.pid)) ab.periodIds.push(r.pid);
+            saveData(); renderCover();
+            const T = teachers.find(t => t.id === R.tid);
+            toast(`Troca de turmas em ${fmtDate(R.date)}: ${T ? T.name : ''} → ${fresh.c2.name}, ${fresh.o.name} → ${r.c.name}. A grade não foi alterada.`, 'ok');
+        }
+        function cessionPanel(R) {
+            const t = teachers.find(x => x.id === R.tid), abs = R.abs;
+            let h = '<div class="border rounded-lg p-3 mb-3 bg-indigo-50 border-indigo-200 text-xs">';
+            h += `<div class="flex items-center justify-between gap-2 flex-wrap"><b class="text-indigo-900">🔁 ${esc(t ? t.name : '')} cede aulas em ${esc(fmtDate(R.date))} (não faltou)</b><button onclick="absClear('${esc(abs.id)}')" class="font-bold text-red-600 underline">Remover cessão</button></div>`;
+            h += `<div class="mt-2 flex gap-2 flex-wrap">${classPeriods().map(p => `<label class="border rounded px-2 py-1 bg-white cursor-pointer ${R.teachingPids.has(p.id) ? 'font-bold' : 'text-gray-500'}"><input type="checkbox" ${abs.periodIds.includes(p.id) ? 'checked' : ''} onchange="absTogglePeriod('${esc(p.id)}', this.checked)"> ${esc(p.label)}</label>`).join('')}</div>`;
+            h += `<div class="mt-1 text-gray-500">Em negrito: aulas que ele(a) tem neste dia. Marque as que ele(a) vai <b>ceder</b>; nas outras continua disponível, inclusive para ficar com a aula de quem o(a) substituir (troca). Para fechar a troca: escolha o outro professor acima e ceda a aula dele(a) para ${esc(t ? shortTeacher(t) : 'este professor')}.${abs.periodIds.length ? '' : ' <b>Marque as aulas a ceder.</b>'}</div>`;
+            const other = !!swapDate2 && swapDate2 !== R.date;
+            h += `<div class="mt-2 pt-2 border-t border-indigo-200 flex items-center gap-2 flex-wrap"><b class="text-indigo-900">⇄ Quando o colega devolve a aula?</b><button onclick="setSwapDate('')" class="font-bold border rounded px-2 py-1 ${other ? 'bg-white border-gray-300 text-gray-700' : 'bg-indigo-600 border-indigo-600 text-white'}">Neste mesmo dia (outro horário)</button><span class="text-gray-600">ou em outro dia:</span><input type="date" value="${esc(swapDate2)}" onchange="setSwapDate(this.value)" class="border rounded px-2 py-1 bg-white ${other ? 'border-indigo-600' : 'border-gray-300'}"></div><div class="mt-1 text-gray-500">Ex.: ${esc(t ? shortTeacher(t) : 'o professor')} cede a aula de hoje e fica com uma aula do colega em outro horário ou dia. Os dois lados são registrados juntos, cada um na sua data.</div>`;
+            return h + '</div>';
+        }
         function absPanel(R) {
             const t = teachers.find(x => x.id === R.tid), abs = R.abs;
+            if (abs && abs.cession) return cessionPanel(R);
             let h = '<div class="border rounded-lg p-3 mb-3 bg-amber-50 border-amber-200 text-xs">';
             if (!abs) {
                 h += `<div class="flex items-center justify-between gap-2 flex-wrap"><span class="text-amber-900"><b>🚫 Professor ausente</b> — ao escolher um substituto, ${esc(t ? t.name : 'o professor')} é marcado(a) como ausente (dia todo) e deixa de aparecer como opção para cobrir outras aulas. Se for só em algumas aulas, marque antes:</span><button onclick="absMark()" class="font-bold bg-white border border-amber-300 rounded px-3 py-1 hover:bg-amber-100 whitespace-nowrap">Marcar ausente</button></div>`;
+                h += `<div class="mt-2 pt-2 border-t border-amber-200 flex items-center justify-between gap-2 flex-wrap"><span class="text-indigo-900"><b>🔁 Cessão / troca de aulas (o professor NÃO faltou)</b> — ${esc(t ? t.name : 'o professor')} cede só as aulas que você marcar e continua disponível nas outras (e pode ficar com a aula do colega, fechando a troca).</span><button onclick="absMark(true)" class="font-bold bg-white border border-indigo-300 rounded px-3 py-1 hover:bg-indigo-100 whitespace-nowrap">Ceder aulas</button></div>`;
             } else {
                 h += `<div class="flex items-center justify-between gap-2 flex-wrap"><b class="text-amber-900">🚫 ${esc(t ? t.name : '')} ausente em ${esc(fmtDate(R.date))}</b><button onclick="absClear('${esc(abs.id)}')" class="font-bold text-red-600 underline">Remover ausência</button></div>`;
                 h += `<div class="mt-2 flex gap-4 flex-wrap"><label class="cursor-pointer"><input type="radio" name="absScope" ${abs.all ? 'checked' : ''} onchange="absScope(true)"> Dia todo</label><label class="cursor-pointer"><input type="radio" name="absScope" ${abs.all ? '' : 'checked'} onchange="absScope(false)"> Só em algumas aulas</label></div>`;
@@ -2644,6 +2867,7 @@
             const body = document.getElementById('subBody'), R = coverRows();
             if (R.err) { coverCache = { rows: [], date: '' }; body.innerHTML = `<div class="text-gray-500">${esc(R.err)}</div>` + coverRegistered(''); return; }
             coverCache = R;
+            R.rows.forEach(r => { r.swaps = (R.abs && R.abs.cession && !r.existing) ? swapOptions(r, R) : []; r.swapC = (R.abs && R.abs.cession && !r.existing) ? swapClassOptions(r, R) : []; });
             const REL = ['bg-green-50 border-green-300 text-green-800 hover:bg-green-100', 'bg-blue-50 border-blue-300 text-blue-800 hover:bg-blue-100'];
             let html = absPanel(R) + `<div class="text-xs text-gray-600 mb-2">${esc(fmtDate(R.date))} · ${esc(WEEKDAYS[R.dt.getDay()])} — ${R.rows.length} aula(s) a cobrir (${sem()}º semestre).</div>`;
             if (!R.rows.length) html += `<div class="text-gray-500 mb-3">${R.teachingPids.size ? 'Nenhuma aula selecionada: marque acima as aulas em que o professor estará ausente.' : 'Este professor não tem aulas neste dia da semana.'}</div>`;
@@ -2657,6 +2881,7 @@
                     const tip = (same ? 'leciona esta disciplina na turma' : 'leciona outra disciplina na turma') + (cd.warns.length ? ' • ⚠ ' + cd.warns.join(' • ') : '') + ` • ${cd.load} aula(s) no dia`;
                     return `<button onclick="coverApply(${i}, ${j}, ${k})" title="${esc(tip)}" class="text-[11px] font-bold border rounded px-2 py-1 mr-1 mb-1 ${REL[same ? 0 : 1]}">${esc(shortTeacher(cd.t))}${multi && sm ? ' · ' + esc(sm.subject) : ''}${cd.warns.length ? ' ⚠' : ''}</button>`;
                 }).join('')).join('');
+                if (!r.existing) cell += swapHtml(r, i) + swapClassHtml(r, i);
                 return `<tr class="border-b align-top"><td class="p-2 whitespace-nowrap">${esc(p ? p.label : '')}<br><span class="text-xs text-gray-500">${esc(p ? p.time : '')}</span></td><td class="p-2">${esc(r.c.name)}<br><span class="text-xs text-gray-600">${esc(r.m.subject)}</span></td><td class="p-2">${cell}</td></tr>`;
             }).join('')}</tbody></table><div class="text-[11px] text-gray-500 mt-2">O substituto entra com a disciplina dele(a): quem leciona mais de uma nesta turma aparece uma vez por disciplina (ex.: "João · Português"). Verde = mesma disciplina da aula · Azul = outra disciplina · ⚠ = aviso (passe o mouse). Só aparecem professores desta turma, sem aula, sem folga e não ausentes naquele horário.</div>`;
             body.innerHTML = html + coverRegistered(R.date);
@@ -2666,15 +2891,15 @@
             let abs = '';
             if (date) {
                 const al = absList.filter(x => x.sem === sem() && x.date === date);
-                if (al.length) abs = `<div class="mt-5 pt-3 border-t"><b class="text-sm text-amber-800">Professores ausentes em ${esc(fmtDate(date))}</b>` + al.map(a => `<div class="text-xs border-b py-1 flex justify-between gap-2"><span>🚫 <b>${esc(nm(a.teacherId))}</b> — ${a.all ? 'dia todo' : (a.periodIds.length ? a.periodIds.map(id => (getPeriod(id) || {}).label || '?').join(', ') : 'nenhuma aula marcada')}</span><button onclick="absClear('${esc(a.id)}')" class="text-red-500 font-bold" title="Remover ausência">&times;</button></div>`).join('') + '</div>';
+                if (al.length) abs = `<div class="mt-5 pt-3 border-t"><b class="text-sm text-amber-800">Ausências e cessões em ${esc(fmtDate(date))}</b>` + al.map(a => `<div class="text-xs border-b py-1 flex justify-between gap-2"><span>${a.cession ? '🔁' : '🚫'} <b>${esc(nm(a.teacherId))}</b> — ${a.cession ? 'cede: ' : ''}${a.all ? 'dia todo' : (a.periodIds.length ? a.periodIds.map(id => (getPeriod(id) || {}).label || '?').join(', ') : 'nenhuma aula marcada')}</span><button onclick="absClear('${esc(a.id)}')" class="text-red-500 font-bold" title="Remover ausência">&times;</button></div>`).join('') + '</div>';
             }
             const dayOnly = !!date && subListScope === 'day';
             const list = subsList.filter(x => x.sem === sem() && (!dayOnly || x.date === date)).slice().sort((a, b) => (b.date.localeCompare(a.date)) || (pidIdx(a.periodId) - pidIdx(b.periodId))).slice(0, 40);
             const on = 'bg-school-primary text-white border-school-primary', off = 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50';
             const scopeBtns = date ? `<span class="inline-flex gap-1"><button onclick="setSubListScope('day')" class="text-[11px] font-bold px-2 py-1 rounded border ${dayOnly ? on : off}">Só do dia ${esc(fmtDate(date))}</button><button onclick="setSubListScope('all')" class="text-[11px] font-bold px-2 py-1 rounded border ${dayOnly ? off : on}">Todas</button></span>` : '';
             if (!list.length) return abs + `<div class="mt-5 pt-3 border-t"><div class="flex justify-between items-center mb-2 flex-wrap gap-2"><b class="text-sm text-school-primary">Substituições registradas (${sem()}º sem.)</b>${scopeBtns}</div><div class="text-xs text-gray-400">${dayOnly ? 'Nenhuma substituição registrada neste dia.' : 'Nenhuma substituição pontual registrada.'}</div></div>`;
-            return abs + `<div class="mt-5 pt-3 border-t"><div class="flex justify-between items-center mb-2 flex-wrap gap-2"><b class="text-sm text-school-primary">Substituições registradas (${sem()}º sem.)</b>${scopeBtns}${date ? `<button onclick="coverPrint('${esc(date)}')" class="text-xs font-bold bg-white border border-gray-300 rounded px-3 py-1 hover:bg-gray-100">🖨️ Imprimir o dia ${esc(fmtDate(date))}</button>` : ''}</div>` +
-                list.map(x => { const p = getPeriod(x.periodId), m = matriz.find(i => i.id === x.mId), cm = matriz.find(i => i.id === (x.coverMId || x.mId)); return `<div class="text-xs border-b py-1 flex justify-between gap-2"><span>${esc(fmtDate(x.date))} · ${esc(p ? p.label : '')} · ${esc(className(x.classId))} · ${esc(m ? m.subject : '')}: <b>${esc(nm(x.absentId))}</b> → <b>${esc(nm(x.coverId))}</b>${cm && m && cm.id !== m.id ? ' (' + esc(cm.subject) + ')' : ''}</span><button onclick="coverRemove('${esc(x.id)}')" class="text-red-500 font-bold" title="Remover registro">&times;</button></div>`; }).join('') + '</div>';
+            return abs + `<div class="mt-5 pt-3 border-t"><div class="flex justify-between items-center mb-2 flex-wrap gap-2"><b class="text-sm text-school-primary">Substituições registradas (${sem()}º sem.)</b>${scopeBtns}${date ? `<span class="inline-flex gap-1 flex-wrap"><button onclick="coverPrint('${esc(date)}')" class="text-xs font-bold bg-white border border-gray-300 rounded px-3 py-1 hover:bg-gray-100">🖨️ Imprimir o dia ${esc(fmtDate(date))}</button><button onclick="coverCopy('${esc(date)}')" class="text-xs font-bold bg-white border border-gray-300 rounded px-3 py-1 hover:bg-gray-100" title="Copia um texto pronto com as substituições do dia">📋 Copiar avisos</button><button onclick="coverWhats('${esc(date)}')" class="text-xs font-bold bg-green-600 text-white rounded px-3 py-1 hover:bg-green-700" title="Abre o WhatsApp com o texto pronto">WhatsApp</button></span>` : ''}</div>` +
+                list.map(x => { const p = getPeriod(x.periodId), m = matriz.find(i => i.id === x.mId), cm = matriz.find(i => i.id === (x.coverMId || x.mId)); const pr = x.swapId ? subsList.find(z => z.swapId === x.swapId && z.id !== x.id) : null; return `<div class="text-xs border-b py-1 flex justify-between gap-2"><span>${x.swapId ? '<span class="text-indigo-600" title="Faz parte de uma troca (desfazer remove os dois lados)">⇄</span> ' : ''}${esc(fmtDate(x.date))} · ${esc(p ? p.label : '')} · ${esc(className(x.classId))} · ${esc(m ? m.subject : '')}: <b>${esc(nm(x.absentId))}</b> → <b>${esc(nm(x.coverId))}</b>${cm && m && cm.id !== m.id ? ' (' + esc(cm.subject) + ')' : ''}${pr && pr.date !== x.date ? ` <span class="text-indigo-600">· troca com ${esc(fmtDate(pr.date).slice(0, 5))}</span>` : ''}</span><button onclick="coverRemove('${esc(x.id)}')" class="text-red-500 font-bold" title="Remover registro (se for troca, remove os dois lados)">&times;</button></div>`; }).join('') + '</div>';
         }
         function coverApply(i, j, k) {
             const r = coverCache.rows[i]; if (!r || r.existing) return;
@@ -2685,7 +2910,8 @@
             subsList.push({ id: 'S' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), date: coverCache.date, sem: sem(), classId: r.c.id, periodId: r.pid, mId: r.m.id, coverMId: mid, absentId: coverCache.tid, coverId: cd.t.id });
             saveData(); renderCover();
             const sm = matriz.find(x => x.id === mid);
-            toast(`${r.m.subject} (${r.c.name}, ${fmtDate(coverCache.date)}) coberta por ${cd.t.name}${sm ? ' (' + sm.subject + ')' : ''}. A grade não foi alterada.`, 'ok');
+            const ab0 = absFind(coverCache.tid, coverCache.date);
+            toast(`${r.m.subject} (${r.c.name}, ${fmtDate(coverCache.date)}) coberta por ${cd.t.name}${sm ? ' (' + sm.subject + ')' : ''}. A grade não foi alterada.` + (ab0 && ab0.cession ? `\nPara fechar a troca: escolha ${cd.t.name} acima e ceda uma aula dele(a) ao professor.` : ''), 'ok');
         }
         function coverApplyAll() {
             const R0 = coverRows(); if (R0.err || !R0.rows.length) return;
@@ -2701,13 +2927,48 @@
             saveData(); renderCover();
             toast(`${done} aula(s) cobertas só em ${fmtDate(R.date)}.` + (left ? `\n${left} sem substituto livre e sem aviso: escolha manualmente.` : ''), left ? 'warn' : 'ok');
         }
-        function coverRemove(id) { subsList = subsList.filter(x => x.id !== id); saveData(); renderCover(); }
+        // ---- Avisos do dia (texto pronto para colar no WhatsApp) ----
+        function coverText(date) {
+            const dt = parseDateStr(date), nm = id => (teachers.find(t => t.id === id) || {}).name || '?';
+            const list = subsList.filter(x => x.sem === sem() && x.date === date).sort((a, b) => pidIdx(a.periodId) - pidIdx(b.periodId) || className(a.classId).localeCompare(className(b.classId)));
+            if (!list.length) return '';
+            const lines = [`*SUBSTITUIÇÕES — ${dt ? WEEKDAYS[dt.getDay()] + ', ' : ''}${fmtDate(date)}*`];
+            const abs = absList.filter(a => a.sem === sem() && a.date === date && !a.cession);
+            if (abs.length) lines.push('Ausentes: ' + abs.map(a => `${nm(a.teacherId)} (${a.all ? 'dia todo' : (a.periodIds.map(id => (getPeriod(id) || {}).label || '?').join(', ') || '—')})`).join('; '));
+            let lastP = null;
+            list.forEach(x => {
+                const p = getPeriod(x.periodId), m = matriz.find(i => i.id === x.mId), cm = matriz.find(i => i.id === (x.coverMId || x.mId));
+                if (x.periodId !== lastP) { lines.push(''); lines.push(`*${p ? p.label : ''}*${p && p.time ? ' (' + p.time + ')' : ''}`); lastP = x.periodId; }
+                const pr = x.swapId ? subsList.find(z => z.swapId === x.swapId && z.id !== x.id) : null;
+                lines.push(`• ${className(x.classId)} — ${m ? m.subject : ''}: *${nm(x.coverId)}* ${x.swapId ? 'assume' : 'cobre'} ${nm(x.absentId)}` + (cm && m && cm.id !== m.id ? ` (dará ${cm.subject})` : '') + (pr && pr.date !== x.date ? ` — troca, devolve em ${fmtDate(pr.date).slice(0, 5)}` : (x.swapId ? ' — troca' : '')));
+            });
+            return lines.join('\n');
+        }
+        function copyText(t) {
+            const fallback = () => { const ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) {} ta.remove(); return ok; };
+            if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t).then(() => true, () => fallback());
+            return Promise.resolve(fallback());
+        }
+        function coverCopy(date) {
+            const t = coverText(date); if (!t) return toast('Não há substituições registradas nesse dia.', 'warn');
+            copyText(t).then(ok => toast(ok ? 'Avisos do dia copiados. É só colar no WhatsApp.' : 'Não consegui copiar automaticamente.', ok ? 'ok' : 'warn'));
+        }
+        function coverWhats(date) {
+            const t = coverText(date); if (!t) return toast('Não há substituições registradas nesse dia.', 'warn');
+            window.open('https://wa.me/?text=' + encodeURIComponent(t), '_blank');
+        }
+        function coverRemove(id) {
+            const x = subsList.find(z => z.id === id), pair = x && x.swapId ? subsList.filter(z => z.swapId === x.swapId).length : 0;
+            subsList = subsList.filter(z => z.id !== id && !(x && x.swapId && z.swapId === x.swapId));
+            saveData(); renderCover();
+            if (pair > 1) toast('Troca desfeita nos dois lados.', 'ok');
+        }
         function coverPrint(date) {
             const list = subsList.filter(x => x.sem === sem() && x.date === date).sort((a, b) => pidIdx(a.periodId) - pidIdx(b.periodId));
             if (!list.length) return toast('Não há substituições registradas nesse dia.', 'warn');
             const dt = parseDateStr(date), nm = id => (teachers.find(t => t.id === id) || {}).name || '?';
             const rows = list.map(x => { const p = getPeriod(x.periodId), m = matriz.find(i => i.id === x.mId), cm = matriz.find(i => i.id === (x.coverMId || x.mId)); return `<tr><td><b>${esc(p ? p.label : '')}</b><br><span style="font-size:9px">${esc(p ? p.time : '')}</span></td><td>${esc(className(x.classId))}</td><td>${esc(m ? m.subject : '')}</td><td>${esc(nm(x.absentId))}</td><td><b>${esc(nm(x.coverId))}</b>${cm && m && cm.id !== m.id ? ' (' + esc(cm.subject) + ')' : ''}</td></tr>`; }).join('');
-            document.getElementById('printContainer').innerHTML = `<div class="print-page">${pageHead('Substituições — ' + fmtDate(date) + (dt ? ' (' + WEEKDAYS[dt.getDay()] + ')' : ''))}<table class="ptable"><thead><tr><th style="width:90px">Aula</th><th>Turma</th><th>Disciplina</th><th>Professor ausente</th><th>Substituto</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+            document.getElementById('printContainer').innerHTML = `<div class="print-page">${pageHead('Substituições — ' + fmtDate(date) + (dt ? ' (' + WEEKDAYS[dt.getDay()] + ')' : ''))}<table class="ptable"><thead><tr><th style="width:90px">Aula</th><th>Turma</th><th>Disciplina</th><th>Ausente / cedente</th><th>Substituto</th></tr></thead><tbody>${rows}</tbody></table></div>`;
             setPrintPage(false);
             window.print();
         }
