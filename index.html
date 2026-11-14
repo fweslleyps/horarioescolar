@@ -247,6 +247,7 @@
             </form>
             
             <div class="overflow-x-auto mb-8">
+                <div id="matrizFilterBar" class="flex gap-2 flex-wrap mb-3 text-xs"></div>
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-100 text-xs text-gray-600 uppercase border-b">
@@ -440,6 +441,8 @@
                     <option value="allteachers">👥 Todos os professores</option>
                     <option value="overview">🗂️ Quadro geral — turmas (compacto)</option>
                     <option value="overviewT">🗂️ Quadro geral — professores (compacto)</option>
+                    <option value="overviewMonth">📅 Quadro geral — turmas, mês inteiro (1 página por semana)</option>
+                    <option value="subsReport">📊 Relatório de substituições do mês</option>
                     <option value="teacher">👨‍🏫 Um professor</option>
                 </select>
                 <select id="printItemSelect" onchange="generatePrintView()" class="hidden border border-gray-300 rounded px-3 py-2 text-sm bg-white"></select>
@@ -447,6 +450,12 @@
                     <label class="flex items-center gap-2 text-xs font-bold text-school-primary" title="As substituições registradas (aba Substituir professor / aula → Cobrir aula) nessa semana aparecem no espaço 'Substituição de aulas'. Deixe vazio para imprimir esse espaço em branco.">Semana de
                         <input type="date" id="printWeekDate" onchange="generatePrintView()" class="border border-gray-300 rounded px-2 py-1 text-sm bg-white font-normal">
                     </label>
+                </div>
+                <div id="printMonthWrap" class="hidden flex items-center gap-3 flex-wrap">
+                    <label class="flex items-center gap-2 text-xs font-bold text-school-primary">Mês
+                        <input type="month" id="printMonth" onchange="generatePrintView()" class="border border-gray-300 rounded px-2 py-1 text-sm bg-white font-normal">
+                    </label>
+                    <label id="printOnlyWrap" class="flex items-center gap-1 text-xs font-bold text-school-primary cursor-pointer"><input type="checkbox" id="printOnlySubs" onchange="generatePrintView()" class="rounded"> só semanas com substituição</label>
                 </div>
                 <div class="ml-auto flex gap-2">
                     <button onclick="exportCSV()" class="bg-white border border-gray-300 text-gray-700 font-bold px-4 py-2 rounded text-sm hover:bg-gray-50 shadow-sm">⬇️ Exportar CSV</button>
@@ -701,11 +710,8 @@
         }
 
         // Disciplinas anuais (padrão) ou só do 1º / só do 2º semestre (m.periodo = '1' | '2')
-        function perBadge(m) { 
-            if (m && m.periodo === '1') return ` <span class="inline-block text-[9px] font-bold bg-purple-100 text-purple-800 rounded px-1 py-0.5" title="Disciplina só deste semestre">só 1º sem.</span>`;
-            if (m && m.periodo === '2') return ` <span class="inline-block text-[9px] font-bold bg-pink-100 text-pink-800 rounded px-1 py-0.5" title="Disciplina só deste semestre">só 2º sem.</span>`;
-            return ''; 
-        }
+        function perCls(p) { return p === '1' ? 'bg-blue-100 text-blue-800 border border-blue-300' : 'bg-orange-100 text-orange-800 border border-orange-300'; }
+        function perBadge(m) { return (m && (m.periodo === '1' || m.periodo === '2')) ? ` <span class="inline-block text-[9px] font-bold ${perCls(m.periodo)} rounded px-1 py-0.5" title="Disciplina só deste semestre">só ${m.periodo}º sem.</span>` : ''; }
         function mActive(m, s) { const p = m && m.periodo; return !(p === '1' || p === '2') || String(p) === String(s || sem()); }
         function getEffectiveAulas(mid, cid) {
             const m = matriz.find(x => x.id === mid); if (!m) return 0;
@@ -1410,8 +1416,18 @@
             formMatrizIds.delete(id); delete formTurmas[id]; history = []; future = []; renderAll();
         }
 
+        let matrizFilter = 'all';
+        function setMatrizFilter(v) { matrizFilter = ['1', '2', 'anual'].includes(v) ? v : 'all'; renderMatrizTable(); }
+        function matrizPer(m) { return (m.periodo === '1' || m.periodo === '2') ? m.periodo : 'anual'; }
         function renderMatrizTable() {
-            document.getElementById('matrizListTable').innerHTML = matriz.map(m => {
+            const bar = document.getElementById('matrizFilterBar');
+            if (bar) {
+                const cnt = k => k === 'all' ? matriz.length : matriz.filter(m => matrizPer(m) === k).length;
+                const on = { all: 'bg-school-primary text-white border-school-primary', '1': 'bg-blue-600 text-white border-blue-600', '2': 'bg-orange-500 text-white border-orange-500', anual: 'bg-gray-700 text-white border-gray-700' };
+                bar.innerHTML = '<span class="font-bold text-gray-500 self-center">Mostrar:</span>' + [['all', 'Todas'], ['1', 'Só 1º semestre'], ['2', 'Só 2º semestre'], ['anual', 'Anuais']].map(([k, l]) => `<button type="button" onclick="setMatrizFilter('${k}')" class="font-bold px-3 py-1.5 rounded-full border ${matrizFilter === k ? on[k] : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}">${l} (${cnt(k)})</button>`).join('');
+            }
+            const shown = matriz.filter(m => matrizFilter === 'all' || matrizPer(m) === matrizFilter);
+            document.getElementById('matrizListTable').innerHTML = shown.map(m => {
                 const semSerie = m.fc ? m.classIds.map(cid => classes.find(c => c.id === cid)).filter(c => c && !c.serie).map(c => shortName(c.name)) : [];
                 const profs = teachers.filter(t => t.matrizIds.includes(m.id)).map(t => {
                     const own = teacherClasses(t, m.id); const partial = own.length !== m.classIds.length;
@@ -1422,17 +1438,12 @@
                 return `
                 <tr class="border-b hover:bg-gray-50">
                     <td class="p-3 font-semibold">${esc(m.subject)} ${m.fc ? FC_BADGE : ''}${semSerie.length ? `<div class="text-[10px] text-amber-700">⚠ defina a série: ${esc(semSerie.join(', '))}</div>` : ''}</td>
-                    <td class="p-3">${m.aulas} aulas/sem.${m.periodo === '1' ? ` <span class="inline-block text-[10px] font-bold bg-purple-100 text-purple-800 rounded px-1.5 py-0.5 ml-1">só 1º sem.</span>` : m.periodo === '2' ? ` <span class="inline-block text-[10px] font-bold bg-pink-100 text-pink-800 rounded px-1.5 py-0.5 ml-1">só 2º sem.</span>` : ''}${(() => { const df = cotaDiffs(m); return df.length ? `<div class="text-[10px] text-amber-700" title="A carga destas turmas vem das cotas dos professores, não da matriz">⚠ cotas: ${esc(df.slice(0, 3).map(x => shortName(className(x.cid)) + '=' + x.eff).join(', '))}${df.length > 3 ? ' +' + (df.length - 3) : ''}</div>` : ''; })()}</td>
+                    <td class="p-3">${m.aulas} aulas/sem.${(m.periodo === '1' || m.periodo === '2') ? ` <span class="inline-block text-[10px] font-bold ${perCls(m.periodo)} rounded px-1.5 py-0.5 ml-1">só ${m.periodo}º sem.</span>` : ''}${(() => { const df = cotaDiffs(m); return df.length ? `<div class="text-[10px] text-amber-700" title="A carga destas turmas vem das cotas dos professores, não da matriz">⚠ cotas: ${esc(df.slice(0, 3).map(x => shortName(className(x.cid)) + '=' + x.eff).join(', '))}${df.length > 3 ? ' +' + (df.length - 3) : ''}</div>` : ''; })()}</td>
                     <td class="p-3 text-xs text-gray-700">${esc(summarizeClasses(m.classIds)) || 'Nenhuma'}</td>
                     <td class="p-3 text-xs text-gray-700">${profHtml || '—'}</td>
-                    <td class="p-3 text-center">
-                        <div class="flex items-center justify-center gap-2">
-                            <button onclick="editMatriz('${m.id}')" class="text-blue-600 font-bold">Editar</button>
-                            <button onclick="deleteMatriz('${m.id}')" class="text-red-500 font-bold text-lg leading-none mb-0.5" title="Excluir">&times;</button>
-                        </div>
-                    </td>
+                    <td class="p-3 align-middle"><div class="flex items-center justify-center gap-3"><button onclick="editMatriz('${m.id}')" class="text-blue-600 hover:text-blue-800 font-bold">Editar</button><button onclick="deleteMatriz('${m.id}')" title="Excluir disciplina" class="text-red-500 hover:text-red-700 font-bold text-lg leading-none">&times;</button></div></td>
                 </tr>`;
-            }).join('') || '<tr><td colspan="5" class="p-3 text-gray-400 text-center">Nenhuma disciplina cadastrada.</td></tr>';
+            }).join('') || `<tr><td colspan="5" class="p-3 text-gray-400 text-center">${matriz.length ? 'Nenhuma disciplina neste filtro.' : 'Nenhuma disciplina cadastrada.'}</td></tr>`;
             renderFcFixed();
         }
         function availableSlots(c) { let n = 0; classPeriods().forEach(p => { if (!(isSecondSemester && c.isEstagio && p.shift === 'tarde')) n++; }); return n * getDays().length; }
@@ -1601,12 +1612,7 @@
                     <td class="p-3">${subjects || '<span class="text-amber-700">⚠ nenhuma</span>'}</td>
                     <td class="p-3 text-xs">${info.map(esc).join('<br>') || 'Livre'}</td>
                     <td class="p-3 text-xs">${rules.join(', ') || '—'}</td>
-                    <td class="p-3 text-center">
-                        <div class="flex items-center justify-center gap-2">
-                            <button onclick="editTeacher('${t.id}')" class="text-blue-600 font-bold">Editar</button>
-                            <button onclick="deleteTeacher('${t.id}')" class="text-red-500 font-bold text-lg leading-none mb-0.5" title="Excluir">&times;</button>
-                        </div>
-                    </td>
+                    <td class="p-3 text-center"><button onclick="editTeacher('${t.id}')" class="text-blue-600 font-bold mr-2">Editar</button><button onclick="deleteTeacher('${t.id}')" class="text-red-500 font-bold">&times;</button></td>
                 </tr>`;
             }).join('') || '<tr><td colspan="5" class="p-3 text-gray-400 text-center">Nenhum professor.</td></tr>';
         }
@@ -2682,10 +2688,10 @@
         // Quadro geral das turmas no modelo do mural: grade da turma + tabela "SUBSTITUIÇÃO DE AULAS" logo abaixo.
         // As aulas cobertas (registro "Cobrir aula") da semana escolhida aparecem nessa tabela, no dia/aula certos.
         function ymd(dt) { return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`; }
-        function overviewClassesHtml() {
+        function overviewClassesHtml(baseOverride) {
             if (!classes.length) return 'Nada cadastrado.';
             const days = getDays(), cps = classPeriods(), wi = document.getElementById('printWeekDate');
-            const base = wi ? parseDateStr(wi.value) : null;
+            const base = baseOverride ? parseDateStr(baseOverride) : (wi ? parseDateStr(wi.value) : null);
             let weekDates = null;
             if (base) { const mon = new Date(base); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7)); weekDates = days.map((_, d) => { const x = new Date(mon); x.setDate(mon.getDate() + d); return ymd(x); }); }
             const short = id => { const t = teachers.find(x => x.id === id); return t ? shortTeacher(t) : '?'; };
@@ -3064,6 +3070,48 @@
             window.print();
         }
 
+
+        // ---- Mural do mês inteiro: uma página (ou mais, se houver muitas turmas) por semana ----
+        function monthWeeks(ym) {
+            const m = /^(\d{4})-(\d{2})$/.exec(ym || ''); if (!m) return [];
+            const y = +m[1], mo = +m[2] - 1, last = new Date(y, mo + 1, 0), first = new Date(y, mo, 1), nd = getDays().length, out = [];
+            const mon = new Date(first); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+            for (; mon <= last; mon.setDate(mon.getDate() + 7)) {
+                const days = []; for (let d = 0; d < nd; d++) { const x = new Date(mon); x.setDate(mon.getDate() + d); if (x >= first && x <= last) days.push(ymd(x)); }
+                if (days.length) out.push({ mon: ymd(mon), days });
+            }
+            return out;
+        }
+        function overviewMonthHtml() {
+            const mi = document.getElementById('printMonth'), only = document.getElementById('printOnlySubs');
+            const weeks = monthWeeks(mi && mi.value); if (!weeks.length) return 'Escolha o mês.';
+            let list = weeks;
+            if (only && only.checked) list = weeks.filter(w => subsList.some(x => x.sem === sem() && w.days.includes(x.date)));
+            if (!list.length) return 'Nenhuma semana deste mês tem substituição registrada neste semestre.';
+            return list.map(w => overviewClassesHtml(w.mon)).join('');
+        }
+
+        // ---- Relatório de substituições do mês (por professor + detalhe) ----
+        function subsReportHtml() {
+            const mi = document.getElementById('printMonth'), ym = mi && mi.value;
+            if (!/^\d{4}-\d{2}$/.test(ym || '')) return 'Escolha o mês.';
+            const list = subsList.filter(x => x.date.slice(0, 7) === ym).sort((a, b) => a.date.localeCompare(b.date) || pidIdx(a.periodId) - pidIdx(b.periodId) || a.classId.localeCompare(b.classId));
+            const [yy, mm] = ym.split('-'), title = `Substituições — ${mm}/${yy}`;
+            if (!list.length) return `<div class="print-page">${pageHead(title)}<p>Nenhuma substituição registrada neste mês.</p></div>`;
+            const nm = id => (teachers.find(t => t.id === id) || {}).name || '?';
+            const isCess = x => { const a = absList.find(z => z.date === x.date && z.teacherId === x.absentId); return !!(a && a.cession); };
+            const st = {}; const get = id => st[id] = st[id] || { cob: 0, falta: 0, cess: 0 };
+            list.forEach(x => { get(x.coverId).cob++; if (isCess(x)) get(x.absentId).cess++; else get(x.absentId).falta++; });
+            const ids = Object.keys(st).sort((a, b) => nm(a).localeCompare(nm(b)));
+            let h = `<div class="print-page">${pageHead(title)}<p style="font-size:10px;margin-bottom:6px">Total: <b>${list.length}</b> aula(s). "Cobriu" = aulas que o professor assumiu; "Substituído" = aulas dele(a) cobertas por falta; "Cedeu" = aulas cedidas em trocas. Saldo = Cobriu − (Substituído + Cedeu): positivo = o professor deu mais aulas do que cedeu.</p>`;
+            h += `<table class="ptable"><thead><tr><th style="text-align:left">Professor(a)</th><th>Cobriu</th><th>Substituído (falta)</th><th>Cedeu (troca)</th><th>Saldo</th></tr></thead><tbody>` + ids.map(id => { const v = st[id], sd = v.cob - v.falta - v.cess; return `<tr><td style="text-align:left">${esc(nm(id))}</td><td>${v.cob}</td><td>${v.falta}</td><td>${v.cess}</td><td><b>${sd > 0 ? '+' : ''}${sd}</b></td></tr>`; }).join('') + `</tbody></table>`;
+            h += `<table class="ptable" style="margin-top:10px"><thead><tr><th>Data</th><th>Aula</th><th>Turma</th><th>Disciplina</th><th>Ausente / cedente</th><th>Substituto(a)</th></tr></thead><tbody>` + list.map(x => {
+                const p = getPeriod(x.periodId), m = matriz.find(i => i.id === x.mId), cm = matriz.find(i => i.id === (x.coverMId || x.mId)), dt = parseDateStr(x.date);
+                return `<tr><td>${esc(fmtDate(x.date).slice(0, 5))} ${esc(dt ? WEEKDAYS[dt.getDay()].slice(0, 3) : '')}</td><td>${esc(p ? p.label : '')}</td><td>${esc(className(x.classId))}</td><td>${esc(m ? m.subject : '')}${cm && m && cm.id !== m.id ? ` → ${esc(cm.subject)}` : ''}</td><td>${esc(nm(x.absentId))} <span style="font-size:8px">(${isCess(x) ? 'cessão/troca' : 'falta'})</span></td><td>${esc(nm(x.coverId))}</td></tr>`;
+            }).join('') + `</tbody></table></div>`;
+            return h;
+        }
+
         // ================= IMPRESSÃO E EXPORTAÇÃO =================
         function updatePrintMode() {
             const mode = document.getElementById('printModeSelect').value, sel = document.getElementById('printItemSelect');
@@ -3073,6 +3121,11 @@
             const wk = document.getElementById('printWeekWrap'), wi = document.getElementById('printWeekDate');
             wk.classList.toggle('hidden', mode !== 'overview');
             if (mode === 'overview' && wi && !wi.value) wi.value = ymd(new Date());
+            const mw = document.getElementById('printMonthWrap'), mi = document.getElementById('printMonth');
+            const isM = mode === 'overviewMonth' || mode === 'subsReport';
+            mw.classList.toggle('hidden', !isM); mw.classList.toggle('flex', isM);
+            document.getElementById('printOnlyWrap').classList.toggle('hidden', mode !== 'overviewMonth');
+            if (isM && mi && !mi.value) mi.value = ymd(new Date()).slice(0, 7);
             generatePrintView();
         }
         function pageHead(title) { 
@@ -3122,6 +3175,8 @@
             if (mode === 'class') { const c = classes.find(x => x.id === id); return c ? classTableHtml(c) : 'Selecione uma turma.'; }
             if (mode === 'allteachers') return teachers.map(teacherTableHtml).join('') || 'Nenhum professor cadastrado.';
             if (mode === 'overview') return overviewHtml('class');
+            if (mode === 'overviewMonth') return overviewMonthHtml();
+            if (mode === 'subsReport') return subsReportHtml();
             if (mode === 'overviewT') return overviewHtml('teacher');
             const t = teachers.find(x => x.id === id); return t ? teacherTableHtml(t) : 'Selecione um professor.';
         }
@@ -3131,7 +3186,7 @@
             if (!st) { st = document.createElement('style'); st.id = 'dynPageStyle'; document.head.appendChild(st); }
             st.textContent = portrait ? '@media print { @page { size: A4 portrait; margin: 8mm; } }' : '';
         }
-        function printDoc() { setPrintPage(document.getElementById('printModeSelect').value === 'overview'); document.getElementById('printContainer').innerHTML = buildPrintHtml(); window.print(); }
+        function printDoc() { setPrintPage(['overview', 'overviewMonth'].includes(document.getElementById('printModeSelect').value)); document.getElementById('printContainer').innerHTML = buildPrintHtml(); window.print(); }
         
         function toggleSemester() { isSecondSemester = document.getElementById('semesterToggle').checked; history = []; future = []; renderAll(); }
         
