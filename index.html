@@ -296,6 +296,11 @@
                         <input type="number" id="teacherMaxPerDay" placeholder="Ex: 8" value="8" required min="1" max="15" class="w-32 border border-gray-300 rounded px-3 py-2 text-sm bg-white">
                         <label class="flex items-center gap-1 text-[10px] text-gray-600 mt-1 cursor-pointer"><input type="checkbox" id="teacherMaxFlex" class="rounded text-school-primary"> Só preferência (avisa, não bloqueia)</label>
                     </div>
+                    <div>
+                        <span class="text-[10px] font-bold text-gray-700 block mb-0.5" title="Quantas aulas o professor pode dar em sequência, no mesmo turno, antes de ter um horário livre (respiro). 0 = sem limite.">Máx. aulas seguidas</span>
+                        <input type="number" id="teacherMaxRun" value="4" min="0" max="9" class="w-28 border border-gray-300 rounded px-3 py-2 text-sm bg-white" title="0 = sem limite">
+                        <label class="flex items-center gap-1 text-[10px] text-gray-600 mt-1 cursor-pointer" title="Se marcado, o recreio/almoço interrompe a sequência. Desmarcado: 2 aulas antes e 3 depois do recreio contam como 5 seguidas."><input type="checkbox" id="teacherRunBreak" class="rounded text-school-primary"> Recreio conta como respiro</label>
+                    </div>
                 </div>
                 
                 <div>
@@ -784,7 +789,7 @@
                 if (!t.turmas || typeof t.turmas !== 'object') t.turmas = {};
                 if (!t.cargas || typeof t.cargas !== 'object') t.cargas = {}; 
                 t.planDay = (t.planDay === undefined || t.planDay === null) ? -1 : Number(t.planDay);
-                t.maxPerDay = t.maxPerDay || 8; t.maxFlex = !!t.maxFlex; 
+                t.maxPerDay = t.maxPerDay || 8; t.maxFlex = !!t.maxFlex; { const mr = Number(t.maxRun); t.maxRun = (t.maxRun === undefined || t.maxRun === null || !Number.isInteger(mr) || mr < 0 || mr > 9) ? 4 : mr; } t.runBreak = !!t.runBreak; 
                 t.color = t.color || bgColors[i % bgColors.length];
             });
             matriz.forEach(m => {
@@ -1138,6 +1143,22 @@
             });
         }
         // Quantidade de HORÁRIOS distintos do professor no dia (FC simultânea conta uma vez). exceptPid = horário a ignorar
+
+        // Sequências de aulas seguidas do professor num dia (todas as turmas; mesmo turno).
+        // runBreak=false: o recreio/almoço NÃO interrompe a sequência; true: interrompe.
+        function teacherRunsOfDay(t, d, extraPid) {
+            const pids = new Set(); if (extraPid) pids.add(extraPid);
+            classes.forEach(c => Object.entries(sched(c.id)).forEach(([k, cell]) => { if (cell.t === t.id && keyDay(k) === d) pids.add(keyPeriod(k)); }));
+            const seq = t.runBreak ? periods : classPeriods(); const runs = []; let cur = null;
+            seq.forEach(p => {
+                if (p.type === 'class' && pids.has(p.id)) {
+                    if (cur && cur.shift === p.shift) { cur.len++; cur.pids.push(p.id); } else { cur = { len: 1, shift: p.shift, pids: [p.id] }; runs.push(cur); }
+                } else cur = null;
+            });
+            return runs;
+        }
+        function teacherRunAt(t, d, pid) { const r = teacherRunsOfDay(t, d, pid).find(x => x.pids.includes(pid)); return r ? r.len : 1; }
+        function runPenalty(t, d, pid) { const n = teacherRunAt(t, d, pid); return n >= 3 ? (n - 2) * 12 : 0; }
         function teacherDayLoad(tid, d, exceptPid) {
             const set = new Set();
             classes.forEach(o => Object.entries(sched(o.id)).forEach(([k, cell]) => { if (cell.t === tid && keyDay(k) === d) { const pid = keyPeriod(k); if (pid !== exceptPid) set.add(pid); } }));
@@ -1198,6 +1219,11 @@
                 });
             }
             
+            if (t.maxRun > 0) {
+                const run = teacherRunAt(t, d, periodId);
+                if (run > t.maxRun) res.soft.push(`${t.name} teria ${run} aulas seguidas (limite ${t.maxRun})`);
+            }
+
             if (m.fc && c.serie && !opts.skipSync) {
                 const falta = classes.filter(o => o.id !== classId && o.serie === c.serie && m.classIds.includes(o.id) && !(isSecondSemester && o.isEstagio && p.shift === 'tarde') && (sched(o.id)[key] || {}).m !== matrizId);
                 if (falta.length) res.soft.push(`FC assíncrona: falta nas turmas da série conectadas`);
@@ -1540,6 +1566,8 @@
                 planDay: parseInt(document.getElementById('teacherPlanDay').value),
                 maxPerDay: Math.min(15, Math.max(1, parseInt(document.getElementById('teacherMaxPerDay').value) || 8)),
                 maxFlex: document.getElementById('teacherMaxFlex').checked,
+                maxRun: (() => { const v = parseInt(document.getElementById('teacherMaxRun').value); return Number.isInteger(v) ? Math.min(9, Math.max(0, v)) : 4; })(),
+                runBreak: document.getElementById('teacherRunBreak').checked,
                 avoidConsecutive: document.getElementById('teacherAvoidConsecutive').checked,
                 folgas: formFolgas.map(f => ({ ...f })),
                 isDiretor: document.getElementById('teacherDiretor').checked
@@ -1564,7 +1592,7 @@
             const t = teachers.find(x => x.id === id); if (!t) return;
             document.getElementById('teacherName').value = t.name; 
             document.getElementById('teacherPlanDay').value = String(t.planDay);
-            document.getElementById('teacherMaxPerDay').value = String(t.maxPerDay || 8); document.getElementById('teacherMaxFlex').checked = !!t.maxFlex;
+            document.getElementById('teacherMaxPerDay').value = String(t.maxPerDay || 8); document.getElementById('teacherMaxFlex').checked = !!t.maxFlex; document.getElementById('teacherMaxRun').value = String(t.maxRun === undefined ? 4 : t.maxRun); document.getElementById('teacherRunBreak').checked = !!t.runBreak;
             document.getElementById('teacherAvoidConsecutive').checked = t.avoidConsecutive;
             document.getElementById('teacherDiretor').checked = t.isDiretor; 
             
@@ -1604,7 +1632,7 @@
                 
                 const allocated = teacherStats(t).slots;
                 const info = []; if (t.planDay >= 0) info.push(`Plano: ${DAY_NAMES[t.planDay]}`); t.folgas.forEach(f => info.push(`Folga: ${folgaText(f)}`));
-                const rules = []; rules.push(`Máx ${t.maxPerDay || 8} aulas/dia${t.maxFlex ? ' (flexível)' : ''}`); if (t.avoidConsecutive) rules.push('Sem geminadas'); if (t.isDiretor) rules.push('Diretor'); 
+                const rules = []; rules.push(`Máx ${t.maxPerDay || 8} aulas/dia${t.maxFlex ? ' (flexível)' : ''}`); if (t.maxRun > 0) rules.push(`Máx ${t.maxRun} seguidas`); if (t.avoidConsecutive) rules.push('Sem geminadas'); if (t.isDiretor) rules.push('Diretor'); 
                 
                 return `
                 <tr class="border-b hover:bg-gray-50">
@@ -1624,7 +1652,7 @@
                 const st = teacherStats(t);
                 return `<tr>
                     <td class="p-2 border font-semibold">${esc(t.name)}</td>
-                    <td class="p-2 border text-center">${st.days}</td>
+                    <td class="p-2 border text-center" title="${st.days} dia(s) com aula${st.planExtra ? ' + 1 dia de planejamento' : ''}">${st.daysSchool}</td>
                     <td class="p-2 border text-center font-bold">${st.slots}</td>
                     <td class="p-2 border text-center ${st.windows > 0 ? 'text-amber-600 font-bold' : ''}">${st.windows}</td>
                     <td class="p-2 border text-center ${st.maxDay > (t.maxPerDay || 8) ? 'text-red-600 font-bold' : ''}">${st.maxDay} / ${t.maxPerDay || 8}</td>
@@ -1706,7 +1734,7 @@
                 const t = teachers.find(x => x.id === activeTeacherView); if(!t) { el.innerHTML = ''; return; }
                 const st = teacherStats(t);
                 let html = `<div><div class="font-bold text-gray-700 mb-2">Resumo: ${esc(t.name)}</div>`;
-                html += `<div class="text-sm bg-blue-50 text-blue-900 border border-blue-200 p-2 rounded mb-2">Aulas ativas: <b>${st.slots}</b> em ${st.days} dia(s) · máx. ${st.maxDay}/dia</div>`;
+                html += `<div class="text-sm bg-blue-50 text-blue-900 border border-blue-200 p-2 rounded mb-2">Aulas ativas: <b>${st.slots}</b> em ${st.days} dia(s) · máx. ${st.maxDay}/dia · <b>${st.daysSchool}</b> dia(s) na escola${st.planExtra ? ' (com o planejamento)' : ''}</div>`;
                 html += `<div class="text-sm bg-orange-50 text-orange-900 border border-orange-200 p-2 rounded">Janelas (Vagas): <b>${st.windows}</b></div></div>`;
                 el.innerHTML = html;
                 return;
@@ -2033,7 +2061,7 @@
                                 if (tCount >= tLimit) continue;
                                 const r = evaluate(t.id, dm.m.id, dm.c.id, d, p.id, { skipSync: true });
                                 if (r.hard.length) continue; if (r.soft.length && pass === 0) continue;
-                                const score = dist + dayLoad * 2 + teacherDayLoad(t.id, d) * 5 + teacherTotal(t.id) * 0.5 + r.soft.length * 30;
+                                const score = dist + dayLoad * 2 + teacherDayLoad(t.id, d) * 5 + teacherTotal(t.id) * 0.5 + r.soft.length * 30 + runPenalty(t, d, p.id);
                                 if (!bestT || score < bestT.score) bestT = { score, t, soft: r.soft.length };
                             }
                             if (!bestT) { feasible = false; break; }
@@ -2084,7 +2112,7 @@
                     const r = evaluate(cell.t, cell.m, c.id, keyDay(key), keyPeriod(key), { skipSync: true });
                     score -= r.soft.length * 5;
                 }));
-                teachers.forEach(t => { score -= teacherStats(t).windows * 2; });
+                teachers.forEach(t => { const st = teacherStats(t); score -= st.windows * 2 + st.overRun * 6 + st.longRuns * 2; });
 
                 if (score > bestSimScore) {
                     bestSimScore = score; bestSimSchedule = JSON.stringify(schedules);
@@ -2119,7 +2147,14 @@
                 slots += idx.length; maxDay = Math.max(maxDay, idx.length);
                 for (let i = 1; i < idx.length; i++) if (cps[idx[i]].shift === cps[idx[i - 1]].shift) windows += idx[i] - idx[i - 1] - 1;
             });
-            return { days: Object.keys(byDay).length, slots, windows, maxDay, lessons };
+            let overRun = 0, longRuns = 0, maxRunLen = 0;
+            Object.keys(byDay).forEach(d => teacherRunsOfDay(t, +d).forEach(r => { maxRunLen = Math.max(maxRunLen, r.len); if (r.len >= 3) longRuns += r.len - 2; if (t.maxRun > 0 && r.len > t.maxRun) overRun += r.len - t.maxRun; }));
+            // Dias na escola = dias com aula + dia de planejamento (o professor está na escola, só não dá aula). Folga de dia inteiro não conta.
+            const presentDays = new Set(Object.keys(byDay).map(Number)); let planExtra = false;
+            const pd = Number(t.planDay);
+            if (t.planDay !== undefined && t.planDay !== null && Number.isInteger(pd) && pd >= 0 && pd < getDays().length && !presentDays.has(pd)
+                && !(t.folgas || []).some(f => !f.p && f.shift === 'all' && f.day !== 'firsts' && f.day !== 'lasts' && (f.day === 'all' || Number(f.day) === pd))) { presentDays.add(pd); planExtra = true; }
+            return { days: Object.keys(byDay).length, daysSchool: presentDays.size, planExtra, slots, windows, maxDay, lessons, overRun, longRuns, maxRunLen };
         }
 
         // ================= FC: HORÁRIO FIXO POR SÉRIE =================
@@ -2256,7 +2291,7 @@
                 });
                 const pd = Number(t.planDay); o.planDay = Number.isInteger(pd) && pd >= -1 && pd <= 5 ? pd : -1;
                 const mx = Number(t.maxPerDay); o.maxPerDay = Number.isInteger(mx) && mx >= 1 && mx <= 15 ? mx : 8;
-                o.maxFlex = !!t.maxFlex; o.avoidConsecutive = !!t.avoidConsecutive; o.isDiretor = !!t.isDiretor;
+                o.maxFlex = !!t.maxFlex; { const mr = Number(t.maxRun); o.maxRun = (t.maxRun !== undefined && t.maxRun !== null && Number.isInteger(mr) && mr >= 0 && mr <= 9) ? mr : 4; } o.runBreak = !!t.runBreak; o.avoidConsecutive = !!t.avoidConsecutive; o.isDiretor = !!t.isDiretor;
                 if (typeof t.color === 'string' && bgColors.includes(t.color)) o.color = t.color;
                 o.folgas = (Array.isArray(t.folgas) ? t.folgas : []).filter(f => { const okP = !f || f.p === undefined || (typeof f.p === 'string' && classPer.has(f.p) && Number.isInteger(f.day) && f.day >= 0 && f.day <= 5); const ok = isObj(f) && okP && FOLGA_SHIFTS.includes(f.shift) && (['firsts', 'lasts', 'all'].includes(f.day) || (Number.isInteger(f.day) && f.day >= 0 && f.day <= 5)); if (!ok) dropped++; return ok; }).map(f => f.p ? { day: f.day, shift: 'all', p: f.p } : { day: f.day, shift: f.shift });
                 return o;
@@ -2419,7 +2454,8 @@
             teachers.forEach(t => {
                 const st = teacherStats(t);
                 if (!t.matrizIds.length) items.push({ sev: 4, title: `${t.name}: sem disciplinas`, detail: 'Professor cadastrado sem nenhuma disciplina/turma.', actions: [nav('Editar', () => editTeacher(t.id))] });
-                if (st.windows > 0) items.push({ sev: 4, title: `${t.name}: ${st.windows} janela(s)`, detail: `${st.slots} aula(s) em ${st.days} dia(s). Janelas são horários vagos entre aulas do mesmo turno.`, actions: [nav('Ver horário', () => showTeacherView(t.id))] });
+                if (st.windows > 0) items.push({ sev: 4, title: `${t.name}: ${st.windows} janela(s)`, detail: `${st.slots} aula(s) em ${st.days} dia(s) com aula. Janelas são horários vagos entre aulas do mesmo turno.`, actions: [nav('Ver horário', () => showTeacherView(t.id))] });
+                if (st.overRun > 0) items.push({ sev: 4, title: `${t.name}: aulas seguidas acima do limite`, detail: `Há sequência de até ${st.maxRunLen} aulas seguidas (limite ${t.maxRun}). Mova uma aula para criar um respiro ou ajuste o limite no cadastro.`, actions: [nav('Ver horário', () => showTeacherView(t.id)), nav('Editar', () => editTeacher(t.id))] });
             });
             items.sort((a, b) => a.sev - b.sev);
             return { items, viol };
@@ -2488,7 +2524,7 @@
             // relatório por professor
             html += `<h3 class="font-bold text-sm text-school-primary mt-6 mb-2">Relatório por professor</h3><div class="overflow-x-auto"><table class="w-full text-left border-collapse text-sm"><thead><tr class="bg-gray-100 text-xs text-gray-600 uppercase border-b"><th class="p-2">Professor</th><th class="p-2">Aulas</th><th class="p-2">Dias</th><th class="p-2">Janelas</th><th class="p-2">Dia mais cheio / limite</th></tr></thead><tbody>${teachers.map(t => {
                 const st = teacherStats(t);
-                return `<tr class="border-b"><td class="p-2 font-semibold">${esc(t.name)}</td><td class="p-2">${st.slots}</td><td class="p-2">${st.days}</td><td class="p-2 ${st.windows ? 'text-amber-700 font-bold' : ''}">${st.windows}</td><td class="p-2 ${st.maxDay > (t.maxPerDay || 8) ? 'text-red-600 font-bold' : ''}">${st.maxDay} / ${t.maxPerDay || 8}</td></tr>`;
+                return `<tr class="border-b"><td class="p-2 font-semibold">${esc(t.name)}</td><td class="p-2">${st.slots}</td><td class="p-2" title="${st.days} dia(s) com aula${st.planExtra ? ' + 1 dia de planejamento' : ''}">${st.daysSchool}</td><td class="p-2 ${st.windows ? 'text-amber-700 font-bold' : ''}">${st.windows}</td><td class="p-2 ${st.maxDay > (t.maxPerDay || 8) ? 'text-red-600 font-bold' : ''}">${st.maxDay} / ${t.maxPerDay || 8}</td></tr>`;
             }).join('') || '<tr><td colspan="5" class="p-2 text-gray-400">—</td></tr>'}</tbody></table></div>`;
             box.innerHTML = html;
             updateAuditBadge();
